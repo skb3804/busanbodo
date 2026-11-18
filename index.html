@@ -81,8 +81,8 @@
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         <!-- PDF & Excel Drag & Drop Upload Banner -->
-        <section id="excel-dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" onclick="document.getElementById('multi-file-input').click()" class="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer space-y-3">
-            <input type="file" id="multi-file-input" accept=".pdf,.xlsx,.xls,.csv" multiple onchange="handleMultiFileSelect(event)" class="hidden">
+        <section id="excel-dropzone" ondragenter="handleDragEnter(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" onclick="document.getElementById('multi-file-input').click()" class="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer space-y-3">
+            <input type="file" id="multi-file-input" accept=".pdf,.xlsx,.xls,.csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple onchange="handleMultiFileSelect(event)" class="hidden">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-3.5">
                     <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
@@ -626,26 +626,79 @@
         // =========================================================================
         // 2. MULTI-FILE (PDF & EXCEL) UPLOAD & PARSING ENGINE
         // =========================================================================
+        let dragDepth = 0;
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragDepth++;
+            const dz = document.getElementById('excel-dropzone');
+            if (dz) dz.classList.add('border-red-500', 'bg-red-50/50');
+        }
+
         function handleDragOver(e) {
             e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
             const dz = document.getElementById('excel-dropzone');
-            dz.classList.add('border-red-500', 'bg-red-50/50');
+            if (dz) dz.classList.add('border-red-500', 'bg-red-50/50');
         }
 
         function handleDragLeave(e) {
             e.preventDefault();
-            const dz = document.getElementById('excel-dropzone');
-            dz.classList.remove('border-red-500', 'bg-red-50/50');
+            e.stopPropagation();
+            dragDepth = Math.max(0, dragDepth - 1);
+            if (dragDepth === 0) {
+                const dz = document.getElementById('excel-dropzone');
+                if (dz) dz.classList.remove('border-red-500', 'bg-red-50/50');
+            }
+        }
+
+        function extractFilesFromDropEvent(e) {
+            const dt = e.dataTransfer;
+            if (!dt) return [];
+            if (dt.items && dt.items.length > 0) {
+                const fromItems = [];
+                for (let i = 0; i < dt.items.length; i++) {
+                    if (dt.items[i].kind === 'file') {
+                        const f = dt.items[i].getAsFile();
+                        if (f) fromItems.push(f);
+                    }
+                }
+                if (fromItems.length > 0) return fromItems;
+            }
+            return Array.from(dt.files || []);
         }
 
         function handleFileDrop(e) {
             e.preventDefault();
-            handleDragLeave(e);
-            const files = Array.from(e.dataTransfer?.files || []);
+            e.stopPropagation();
+            dragDepth = 0;
+            const dz = document.getElementById('excel-dropzone');
+            if (dz) dz.classList.remove('border-red-500', 'bg-red-50/50');
+
+            const files = extractFilesFromDropEvent(e);
+            if (files.length > 0) {
+                enqueueFiles(files);
+            } else {
+                showToast('파일을 인식하지 못했습니다. 드롭 영역을 클릭하여 파일을 직접 선택해 주세요.', 'info');
+            }
+        }
+
+        // Prevent browser from opening dropped files anywhere on the page
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        }, false);
+
+        window.addEventListener('drop', (e) => {
+            const dz = document.getElementById('excel-dropzone');
+            if (dz && dz.contains(e.target)) return;
+            e.preventDefault();
+            const files = extractFilesFromDropEvent(e);
             if (files.length > 0) {
                 enqueueFiles(files);
             }
-        }
+        }, false);
 
         function handleMultiFileSelect(e) {
             const files = Array.from(e.target.files || []);
