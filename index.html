@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (Excel / CSV Parser) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- PDF.js (PDF Text Extractor) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts: Pretendard -->
@@ -56,19 +58,8 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">B tv 부산뉴스</span>
-                            <span id="uploaded-file-badge" class="text-xs text-slate-500 font-medium">기본 샘플 데이터 (20건)</span>
-                        </div>
-                        <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">SK브로드밴드 부산보도국 기사 분석기</h1>
-                    </div>
-                </div>
-
-                <!-- Action Buttons (Excel Upload Centered) -->
+                <!-- Action Buttons -->
                 <div class="flex flex-wrap items-center gap-2">
-                    <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" onchange="handleExcelFileUpload(event)" class="hidden">
-                    <button type="button" onclick="document.getElementById('excel-file-input').click()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white sk-gradient hover:opacity-95 active:scale-[0.99] shadow-md transition-all cursor-pointer">
-                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-                        <span>엑셀 파일 업로드 (.xlsx / .csv)</span>
-                    </button>
                     <button type="button" onclick="downloadExcelTemplate()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer" title="업로드용 표준 엑셀 양식 다운로드">
                         <i data-lucide="file-down" class="w-3.5 h-3.5 text-slate-600"></i>
                         <span class="hidden md:inline">양식 샘플</span>
@@ -89,24 +80,35 @@
     <!-- Main Content -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- Excel Drag & Drop Upload Banner -->
-        <section id="excel-dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" onclick="document.getElementById('excel-file-input').click()" class="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div class="flex items-center gap-3.5">
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                    <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+        <!-- PDF & Excel Drag & Drop Upload Banner -->
+        <section id="excel-dropzone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" onclick="document.getElementById('multi-file-input').click()" class="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer space-y-3">
+            <input type="file" id="multi-file-input" accept=".pdf,.xlsx,.xls,.csv" multiple onchange="handleMultiFileSelect(event)" class="hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-800">부산보도국 기사 리스트 <span class="text-red-600">pdf 또는 엑셀 자료</span>를 이곳에 끌어다 놓거나 클릭하여 추가하세요</p>
+                        <p class="text-xs text-slate-500 mt-0.5">여러 개 파일(.pdf, .xlsx, .xls, .csv)을 동시에 담은 뒤 우측 <span class="font-semibold text-slate-700">[적용]</span> 버튼을 누르면 일괄 분석됩니다.</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-sm font-bold text-slate-800">부산보도국 기사 리스트 엑셀 파일을 이곳에 끌어다 놓거나 클릭하여 업로드하세요</p>
-                    <p class="text-xs text-slate-500 mt-0.5">지원 형식: <span class="font-semibold text-slate-700">.xlsx, .xls, .csv</span> · 컬럼(제목, 기자, 보도일 등) 자동 인식 및 분야·자치구 자동 분류</p>
+                <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation()">
+                    <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-2 rounded-lg cursor-pointer select-none">
+                        <input type="checkbox" id="dedupe-mode" checked class="rounded text-red-600 focus:ring-red-500">
+                        <span>중복 기사 제외</span>
+                    </label>
+                    <button type="button" id="btn-apply-files" onclick="applyQueuedFiles()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white sk-gradient hover:opacity-95 active:scale-[0.98] shadow-sm transition-all cursor-pointer">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        <span>적용</span>
+                    </button>
                 </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation()">
-                <label class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg cursor-pointer select-none">
-                    <input type="checkbox" id="excel-append-mode" class="rounded text-red-600">
-                    <span>기존 목록에 누적 추가</span>
-                </label>
-                <button type="button" onclick="loadDefaultSampleData(true)" class="text-xs font-medium text-slate-500 hover:text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                    샘플 복원
+            <!-- Queued Files Chips -->
+            <div id="queued-files-bar" onclick="event.stopPropagation()" class="hidden pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div id="queued-files-list" class="flex flex-wrap items-center gap-1.5"></div>
+                <button type="button" onclick="clearQueuedFiles()" class="text-xs text-slate-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                    대기 목록 비우기
                 </button>
             </div>
         </section>
@@ -540,6 +542,11 @@
 
         let allArticles = [];
         let filteredArticles = [];
+        let queuedFiles = [];
+
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
 
         // Chart Instances
         let trendChartInstance = null;
@@ -612,7 +619,7 @@
         ]);
 
         // =========================================================================
-        // 2. EXCEL UPLOAD & PARSING ENGINE (SheetJS)
+        // 2. MULTI-FILE (PDF & EXCEL) UPLOAD & PARSING ENGINE
         // =========================================================================
         function handleDragOver(e) {
             e.preventDefault();
@@ -629,23 +636,86 @@
         function handleFileDrop(e) {
             e.preventDefault();
             handleDragLeave(e);
-            const files = e.dataTransfer?.files;
-            if (files && files.length > 0) {
-                processExcelFile(files[0]);
+            const files = Array.from(e.dataTransfer?.files || []);
+            if (files.length > 0) {
+                enqueueFiles(files);
             }
         }
 
-        function handleExcelFileUpload(e) {
-            const file = e.target.files?.[0];
-            if (file) {
-                processExcelFile(file);
-                e.target.value = ''; // Reset input so same file can be re-uploaded
+        function handleMultiFileSelect(e) {
+            const files = Array.from(e.target.files || []);
+            if (files.length > 0) {
+                enqueueFiles(files);
+                e.target.value = '';
             }
+        }
+
+        function enqueueFiles(files) {
+            const validExts = ['.pdf', '.xlsx', '.xls', '.csv'];
+            let addedCount = 0;
+
+            files.forEach(file => {
+                const lower = file.name.toLowerCase();
+                if (!validExts.some(ext => lower.endsWith(ext))) {
+                    showToast(`지원하지 않는 형식 제외됨: ${file.name}`, 'error');
+                    return;
+                }
+                const exists = queuedFiles.some(f => f.name === file.name && f.size === file.size);
+                if (!exists) {
+                    queuedFiles.push(file);
+                    addedCount++;
+                }
+            });
+
+            renderQueuedFiles();
+            if (addedCount > 0) {
+                showToast(`${addedCount}개 파일이 대기열에 추가되었습니다. [적용] 버튼을 눌러 분석을 실행하세요.`, 'info');
+            }
+        }
+
+        function removeQueuedFile(idx) {
+            queuedFiles.splice(idx, 1);
+            renderQueuedFiles();
+        }
+
+        function clearQueuedFiles() {
+            queuedFiles = [];
+            renderQueuedFiles();
+        }
+
+        function renderQueuedFiles() {
+            const bar = document.getElementById('queued-files-bar');
+            const list = document.getElementById('queued-files-list');
+            if (!bar || !list) return;
+
+            if (queuedFiles.length === 0) {
+                bar.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+
+            bar.classList.remove('hidden');
+            list.innerHTML = queuedFiles.map((f, idx) => {
+                const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                const badgeStyle = isPdf
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                const label = isPdf ? 'PDF' : 'EXCEL';
+                return `
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium bg-slate-50 border-slate-200 text-slate-700">
+                        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold border ${badgeStyle}">${label}</span>
+                        <span class="max-w-[180px] truncate">${escapeHtml(f.name)}</span>
+                        <button type="button" onclick="removeQueuedFile(${idx})" class="text-slate-400 hover:text-red-600 ml-0.5" title="제외">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </span>
+                `;
+            }).join('');
+            lucide.createIcons();
         }
 
         function normalizeExcelDate(val) {
             if (!val) return getTodayStr();
-            // Excel serial date number
             if (typeof val === 'number' && val > 20000 && val < 80000) {
                 const utcDays = Math.floor(val - 25569);
                 const d = new Date(utcDays * 86400 * 1000);
@@ -686,105 +756,229 @@
             return '';
         }
 
-        function processExcelFile(file) {
+        function parseExcelBufferToArticles(arrayBuffer, fileIdx) {
             if (typeof XLSX === 'undefined') {
-                showToast('엑셀 파서 라이브러리가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.', 'error');
+                throw new Error('엑셀 파서 라이브러리가 로드되지 않았습니다.');
+            }
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+            const parsed = [];
+            rows.forEach((row, idx) => {
+                let title = pickColumnValue(row, ['기사제목', '제목', 'title', 'headline', '기사명', '내용']);
+                if (!title) {
+                    const vals = Object.values(row).map(v => String(v).trim()).filter(v => v.length >= 6 && !/^https?:\/\//.test(v));
+                    vals.sort((a, b) => b.length - a.length);
+                    title = vals[0] || '';
+                }
+                if (!title || title.length < 2) return;
+
+                const rawReporter = pickColumnValue(row, ['취재기자', '기자', '기자명', '작성자', 'reporter', 'author', 'byline']);
+                const reporter = rawReporter ? formatReporterLabel(rawReporter) : '부산보도국';
+
+                const rawDate = row['보도일'] ?? row['날짜'] ?? row['출고일'] ?? row['작성일'] ?? row['등록일'] ?? row['date'] ?? pickColumnValue(row, ['보도일', '날짜', '출고일', '작성일', '일자', 'date']);
+                const date = normalizeExcelDate(rawDate);
+
+                const summary = pickColumnValue(row, ['요약', '리드문', '본문', '부제', 'summary', 'description']) || title;
+                const rawCategory = pickColumnValue(row, ['분야', '주제', '카테고리', '분류', '섹션', 'category']);
+                const rawDistrict = pickColumnValue(row, ['지역', '자치구', '출입처', '권역', '구군', 'district', 'region']);
+                const rawUrl = pickColumnValue(row, ['링크', 'url', '주소', '기사링크', '원문']);
+                const rawId = pickColumnValue(row, ['번호', '기사번호', 'id', 'idxno']);
+
+                const validCategories = Object.keys(CATEGORY_CONFIG);
+                const category = validCategories.includes(rawCategory)
+                    ? rawCategory
+                    : detectCategory(`${title} ${summary} ${rawCategory}`);
+                const district = rawDistrict || detectDistrict(`${title} ${summary}`);
+
+                parsed.push({
+                    id: rawId || `xls_${Date.now()}_${fileIdx}_${idx}`,
+                    title,
+                    reporter,
+                    date,
+                    category,
+                    district,
+                    summary,
+                    url: rawUrl || DEFAULT_NEWSROOM_URL
+                });
+            });
+            return parsed;
+        }
+
+        async function parsePdfBufferToArticles(arrayBuffer, fileName, fileIdx) {
+            if (typeof pdfjsLib === 'undefined') {
+                throw new Error('PDF 파서 라이브러리가 로드되지 않았습니다.');
+            }
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const lines = [];
+
+            for (let p = 1; p <= pdf.numPages; p++) {
+                const page = await pdf.getPage(p);
+                const content = await page.getTextContent();
+                const items = content.items || [];
+                let currentLine = '';
+                let lastY = null;
+
+                items.forEach(item => {
+                    const y = Math.round(item.transform?.[5] || 0);
+                    if (lastY !== null && Math.abs(y - lastY) > 4) {
+                        if (currentLine.trim()) lines.push(currentLine.trim());
+                        currentLine = item.str;
+                    } else {
+                        currentLine += (currentLine ? ' ' : '') + item.str;
+                    }
+                    lastY = y;
+                });
+                if (currentLine.trim()) lines.push(currentLine.trim());
+            }
+
+            const parsed = [];
+            const dateRegex = /(20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2})/;
+            const reporterRegex = /([가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.length < 8) continue;
+                if (/^(전체|기사목록|제목형|요약형|포토형|유튜브|상세검색|더보기|최신기사|많이 본 기사|Copyright|SK브로드밴드)/i.test(line)) continue;
+
+                const repMatch = line.match(reporterRegex);
+                const dateMatch = line.match(dateRegex);
+                const nextLine = lines[i + 1] || '';
+                const nextRep = nextLine.match(reporterRegex);
+                const nextDate = nextLine.match(dateRegex);
+
+                if (repMatch || dateMatch || nextRep || nextDate) {
+                    let title = line
+                        .replace(dateRegex, '')
+                        .replace(reporterRegex, '')
+                        .replace(/\d{2}:\d{2}/g, '')
+                        .trim();
+
+                    if (title.length < 6) continue;
+
+                    const reporter = repMatch
+                        ? `${repMatch[1]} ${repMatch[2]}`
+                        : (nextRep ? `${nextRep[1]} ${nextRep[2]}` : '부산보도국');
+                    const rawDate = dateMatch ? dateMatch[1] : (nextDate ? nextDate[1] : getTodayStr());
+                    const date = normalizeExcelDate(rawDate);
+
+                    parsed.push({
+                        id: `pdf_${Date.now()}_${fileIdx}_${i}`,
+                        title,
+                        reporter,
+                        date,
+                        category: detectCategory(title),
+                        district: detectDistrict(title),
+                        summary: `${fileName}에서 추출된 기사`,
+                        url: DEFAULT_NEWSROOM_URL
+                    });
+
+                    if (!repMatch && !dateMatch && (nextRep || nextDate)) {
+                        i++;
+                    }
+                }
+            }
+
+            // Fallback: if PDF is a single report/script without list metadata, treat non-header paragraphs as items
+            if (parsed.length === 0) {
+                lines.filter(l => l.length >= 12 && l.length <= 120).slice(0, 50).forEach((l, idx) => {
+                    const repMatch = l.match(reporterRegex);
+                    parsed.push({
+                        id: `pdf_line_${Date.now()}_${fileIdx}_${idx}`,
+                        title: l,
+                        reporter: repMatch ? `${repMatch[1]} ${repMatch[2]}` : '부산보도국',
+                        date: getTodayStr(),
+                        category: detectCategory(l),
+                        district: detectDistrict(l),
+                        summary: `${fileName} 추출 항목`,
+                        url: DEFAULT_NEWSROOM_URL
+                    });
+                });
+            }
+
+            return parsed;
+        }
+
+        async function applyQueuedFiles() {
+            if (queuedFiles.length === 0) {
+                showToast('먼저 분석할 PDF 또는 엑셀 파일을 끌어다 놓거나 선택해 주세요.', 'error');
                 return;
             }
 
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                try {
-                    const data = new Uint8Array(evt.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            const btn = document.getElementById('btn-apply-files');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-60');
+            }
 
-                    if (!rows || rows.length === 0) {
-                        showToast('엑셀 시트에 데이터가 비어 있습니다.', 'error');
-                        return;
-                    }
-
-                    const parsedArticles = [];
-                    rows.forEach((row, idx) => {
-                        // Flexible column matching for Korean & English headers
-                        let title = pickColumnValue(row, ['기사제목', '제목', 'title', 'headline', '기사명', '내용']);
-                        // Fallback: pick longest string cell if header names are non-standard
-                        if (!title) {
-                            const vals = Object.values(row).map(v => String(v).trim()).filter(v => v.length >= 6 && !/^https?:\/\//.test(v));
-                            vals.sort((a, b) => b.length - a.length);
-                            title = vals[0] || '';
-                        }
-                        if (!title || title.length < 2) return;
-
-                        const rawReporter = pickColumnValue(row, ['취재기자', '기자', '기자명', '작성자', 'reporter', 'author', 'byline']);
-                        const reporter = rawReporter ? formatReporterLabel(rawReporter) : '부산보도국';
-
-                        const rawDate = row['보도일'] ?? row['날짜'] ?? row['출고일'] ?? row['작성일'] ?? row['등록일'] ?? row['date'] ?? pickColumnValue(row, ['보도일', '날짜', '출고일', '작성일', '일자', 'date']);
-                        const date = normalizeExcelDate(rawDate);
-
-                        const summary = pickColumnValue(row, ['요약', '리드문', '본문', '부제', 'summary', 'description']) || title;
-                        const rawCategory = pickColumnValue(row, ['분야', '주제', '카테고리', '분류', '섹션', 'category']);
-                        const rawDistrict = pickColumnValue(row, ['지역', '자치구', '출입처', '권역', '구군', 'district', 'region']);
-                        const rawUrl = pickColumnValue(row, ['링크', 'url', '주소', '기사링크', '원문']);
-                        const rawId = pickColumnValue(row, ['번호', '기사번호', 'id', 'idxno']);
-
-                        const validCategories = Object.keys(CATEGORY_CONFIG);
-                        const category = validCategories.includes(rawCategory)
-                            ? rawCategory
-                            : detectCategory(`${title} ${summary} ${rawCategory}`);
-
-                        const district = rawDistrict || detectDistrict(`${title} ${summary}`);
-
-                        parsedArticles.push({
-                            id: rawId || `xls_${Date.now()}_${idx}`,
-                            title,
-                            reporter,
-                            date,
-                            category,
-                            district,
-                            summary,
-                            url: rawUrl || DEFAULT_NEWSROOM_URL
-                        });
-                    });
-
-                    if (parsedArticles.length === 0) {
-                        showToast('엑셀에서 유효한 기사 제목 행을 찾지 못했습니다. 첫 행에 "기사제목", "취재기자", "보도일" 등의 열 이름이 있는지 확인해주세요.', 'error');
-                        return;
-                    }
-
-                    const isAppend = document.getElementById('excel-append-mode')?.checked;
-                    if (isAppend) {
-                        const existingTitles = new Set(allArticles.map(a => a.title));
-                        const uniqueNew = parsedArticles.filter(a => !existingTitles.has(a.title));
-                        allArticles = [...uniqueNew, ...allArticles];
-                        showToast(`📊 엑셀 업로드 완료: 기존 목록에 신규 ${uniqueNew.length}건이 추가되었습니다. (총 ${allArticles.length}건)`, 'success');
+            try {
+                let collected = [];
+                for (let i = 0; i < queuedFiles.length; i++) {
+                    const file = queuedFiles[i];
+                    const buffer = await file.arrayBuffer();
+                    const lower = file.name.toLowerCase();
+                    if (lower.endsWith('.pdf')) {
+                        const pdfItems = await parsePdfBufferToArticles(buffer, file.name, i);
+                        collected.push(...pdfItems);
                     } else {
-                        allArticles = parsedArticles;
-                        showToast(`📊 "${file.name}" 업로드 완료: 총 ${allArticles.length}건의 기사를 분석합니다!`, 'success');
+                        const xlsItems = parseExcelBufferToArticles(buffer, i);
+                        collected.push(...xlsItems);
                     }
-
-                    const badgeEl = document.getElementById('uploaded-file-badge');
-                    if (badgeEl) {
-                        badgeEl.textContent = `업로드 파일: ${file.name} (${allArticles.length}건)`;
-                        badgeEl.className = 'text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200';
-                    }
-
-                    saveArticlesToStorage();
-                    populateFilterOptions();
-                    resetFilters();
-
-                    const target = document.getElementById('analysis-results-section');
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                } catch (err) {
-                    console.error('Excel parse error:', err);
-                    showToast('엑셀 파일을 읽는 중 오류가 발생했습니다. 파일 형식을 확인해주세요.', 'error');
                 }
-            };
-            reader.readAsArrayBuffer(file);
+
+                if (collected.length === 0) {
+                    showToast('업로드한 파일에서 유효한 기사 데이터를 추출하지 못했습니다.', 'error');
+                    return;
+                }
+
+                const dedupeChecked = document.getElementById('dedupe-mode')?.checked ?? true;
+                const fileCount = queuedFiles.length;
+                const fileNamesLabel = fileCount === 1 ? queuedFiles[0].name : `${queuedFiles[0].name} 외 ${fileCount - 1}건`;
+
+                if (dedupeChecked) {
+                    const existingTitles = new Set(allArticles.map(a => a.title.trim()));
+                    const batchSeen = new Set();
+                    const uniqueNew = collected.filter(a => {
+                        const key = a.title.trim();
+                        if (existingTitles.has(key) || batchSeen.has(key)) return false;
+                        batchSeen.add(key);
+                        return true;
+                    });
+                    const skipped = collected.length - uniqueNew.length;
+                    allArticles = [...uniqueNew, ...allArticles];
+                    showToast(`적용 완료: 신규 ${uniqueNew.length}건 반영 (중복 ${skipped}건 제외 · 총 ${allArticles.length}건)`, 'success');
+                } else {
+                    allArticles = [...collected, ...allArticles];
+                    showToast(`적용 완료: ${collected.length}건 전체 반영 (총 ${allArticles.length}건)`, 'success');
+                }
+
+                const badgeEl = document.getElementById('uploaded-file-badge');
+                if (badgeEl) {
+                    badgeEl.textContent = `적용 자료: ${fileNamesLabel} (${allArticles.length}건)`;
+                    badgeEl.className = 'text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200';
+                }
+
+                clearQueuedFiles();
+                saveArticlesToStorage();
+                populateFilterOptions();
+                resetFilters();
+
+                const target = document.getElementById('analysis-results-section');
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (err) {
+                console.error('File batch apply error:', err);
+                showToast(`파일 처리 중 오류가 발생했습니다: ${err.message}`, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-60');
+                }
+            }
         }
 
         function downloadExcelTemplate() {
