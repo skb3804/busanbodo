@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SK브로드밴드 부산보도국 | 기사 분류 및 보도 분석 대시보드</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts: Pretendard & Inter -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .sk-gradient {
+            background: linear-gradient(135deg, #ea002c 0%, #f47725 100%);
+        }
+        #refresh-btn.collecting svg { animation: skb-spin 1s linear infinite; }
+        #refresh-btn.collecting { color: #ea002c; }
+        @keyframes skb-spin { to { transform: rotate(360deg); } }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between py-3 gap-3">
+                <!-- Brand & Title -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl sk-gradient flex items-center justify-center text-white font-bold shadow-md shrink-0">
+                        <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">B tv 부산뉴스</span>
+                            <a href="https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-500 hover:text-red-600 flex items-center gap-1 transition-colors">
+                                <span>원본 보도국 페이지</span>
+                                <i data-lucide="external-link" class="w-3 h-3"></i>
+                            </a>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <h1 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">SK브로드밴드 부산보도국 기사 분석기</h1>
+                            <button id="refresh-btn" type="button" onclick="refreshFromSite(event)" title="새로고침 — 부산보도국 최신 기사를 다시 수집합니다 (Shift+클릭: 올해 전체 다시 수집)" aria-label="최신 기사 새로고침" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 transition-colors cursor-pointer">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <p id="collect-status" class="text-[11px] text-slate-500 mt-0.5 min-h-[14px]"></p>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2">
+                    
+                    <button onclick="openModal('add-modal')" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-all cursor-pointer">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">단건 추가</span>
+                    </button>
+                    <div class="relative inline-block">
+                        <button onclick="exportCSV()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-all cursor-pointer" title="현재 필터링된 데이터 CSV 다운로드">
+                            <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+                            <span class="hidden sm:inline">CSV 내보내기</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Multi-Dimensional Filter Control Panel -->
+        <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4 text-red-600"></i>
+                    <h2 class="text-sm font-bold text-slate-800">다차원 분류 및 필터링</h2>
+                    <span id="active-filter-badge" class="hidden text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">필터 적용됨</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <!-- Quick Period Presets -->
+                    <div class="inline-flex flex-wrap rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
+                        <button onclick="setDatePreset('all')" data-preset="all" class="preset-btn px-2.5 py-1 rounded-md bg-white text-slate-900 shadow-sm transition-all">전체 기간</button>
+                        <button onclick="setDatePreset('7d')" data-preset="7d" class="preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all">최근 7일</button>
+                        <button onclick="setDatePreset('15d')" data-preset="15d" class="preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all">최근 15일</button>
+                        <button onclick="setDatePreset('2026-11')" data-preset="2026-11" class="preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all">2026년 11월</button>
+                        <button onclick="setDatePreset('2026-10')" data-preset="2026-10" class="preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all">2026년 10월</button>
+                    </div>
+                    <button onclick="resetFilters()" class="text-xs text-slate-500 hover:text-red-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span>초기화</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                <!-- Date Start -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">시작일</label>
+                    <input type="date" id="filter-date-start" onchange="applyFilters()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                </div>
+                <!-- Date End -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">종료일</label>
+                    <input type="date" id="filter-date-end" onchange="applyFilters()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                </div>
+                <!-- Reporter Filter -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">취재 기자별</label>
+                    <select id="filter-reporter" onchange="applyFilters()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                        <option value="ALL">전체 기자</option>
+                    </select>
+                </div>
+                <!-- Category Filter -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">분야 / 주제별</label>
+                    <select id="filter-category" onchange="applyFilters()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                        <option value="ALL">전체 분야</option>
+                        <option value="시정·행정">시정·행정</option>
+                        <option value="교육">교육</option>
+                        <option value="경제·산업">경제·산업</option>
+                        <option value="도시·교통">도시·교통</option>
+                        <option value="사회·안전">사회·안전</option>
+                        <option value="문화·복지">문화·복지</option>
+                    </select>
+                </div>
+                <!-- District / Beat Filter -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">자치구 / 출입처별</label>
+                    <select id="filter-district" onchange="applyFilters()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                        <option value="ALL">전체 지역/기관</option>
+                    </select>
+                </div>
+                <!-- Keyword Search -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">키워드 검색</label>
+                    <div class="relative">
+                        <input type="text" id="filter-keyword" oninput="applyFilters()" placeholder="제목, 본문, 키워드..." class="w-full rounded-lg border border-slate-300 pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- KPI Summary Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Articles -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">총 수집 기사 수</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <h3 id="kpi-total" class="text-3xl font-extrabold text-slate-900">0</h3>
+                        <span class="text-sm font-medium text-slate-500">건</span>
+                    </div>
+                    <p id="kpi-total-sub" class="mt-1 text-xs text-slate-500">전체 데이터 대비 100%</p>
+                </div>
+                <div class="p-3 rounded-xl bg-red-50 text-red-600">
+                    <i data-lucide="newspaper" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- Participating Reporters -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">참여 취재기자 수</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <h3 id="kpi-reporter-count" class="text-3xl font-extrabold text-slate-900">0</h3>
+                        <span class="text-sm font-medium text-slate-500">명</span>
+                    </div>
+                    <p id="kpi-top-reporter-info" class="mt-1 text-xs text-blue-600 font-medium">최다 출고: -</p>
+                </div>
+                <div class="p-3 rounded-xl bg-blue-50 text-blue-600">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- Top Category -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">최다 보도 분야</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <h3 id="kpi-top-category" class="text-2xl font-extrabold text-slate-900">-</h3>
+                    </div>
+                    <p id="kpi-daily-avg-info" class="mt-1 text-xs text-slate-500">일평균 0.0건 출고</p>
+                </div>
+                <div class="p-3 rounded-xl bg-orange-50 text-orange-600">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- Top Focus Area / District -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">집중 취재 권역/자치구</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <h3 id="kpi-top-district" class="text-2xl font-extrabold text-slate-900">-</h3>
+                    </div>
+                    <p id="kpi-date-span" class="mt-1 text-xs text-emerald-600 font-medium">수집 기간 기준</p>
+                </div>
+                <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+                    <i data-lucide="map-pin" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Grid (Row 1: Trend & Reporter) -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Period Trend Chart (2/3 width) -->
+            <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">기간별 기사 출고 추이</h3>
+                        <p class="text-xs text-slate-500">일자별 부산보도국 기사 송출 건수 변화</p>
+                    </div>
+                    <span class="text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">일별 집계</span>
+                </div>
+                <div class="relative flex-1 min-h-[250px] w-full">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Reporter Breakdown Chart (1/3 width) -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">기자별 출고 현황</h3>
+                        <p class="text-xs text-slate-500">클릭 시 해당 기자 기사로 필터링</p>
+                    </div>
+                    <i data-lucide="users" class="w-4 h-4 text-slate-400"></i>
+                </div>
+                <div class="relative flex-1 min-h-[250px] w-full">
+                    <canvas id="reporterChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Grid (Row 2: Category, District, Top Keywords) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Category Doughnut Chart -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                <div class="mb-4">
+                    <h3 class="text-base font-bold text-slate-900">주제·분야별 보도 비중</h3>
+                    <p class="text-xs text-slate-500">자동 키워드 분류 기반 분야 분포</p>
+                </div>
+                <div class="relative flex-1 min-h-[230px] w-full flex items-center justify-center">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- District / Beat Bar Chart -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                <div class="mb-4">
+                    <h3 class="text-base font-bold text-slate-900">자치구·출입처별 분포</h3>
+                    <p class="text-xs text-slate-500">SK브로드밴드 부산 권역 및 주요 기관</p>
+                </div>
+                <div class="relative flex-1 min-h-[230px] w-full">
+                    <canvas id="districtChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Keywords Analysis -->
+            <div class="md:col-span-2 lg:col-span-1 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">핵심 이슈 키워드 TOP 10</h3>
+                        <p class="text-xs text-slate-500">기사 제목 형태소/어절 빈도 분석 (클릭 검색)</p>
+                    </div>
+                    <i data-lucide="hash" class="w-4 h-4 text-red-500"></i>
+                </div>
+                <div id="keyword-cloud" class="flex-1 flex flex-wrap content-start gap-2 pt-1">
+                    <!-- Dynamic Keyword Pills -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Filtered Article List Table -->
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base font-bold text-slate-900">분류된 기사 목록</h3>
+                        <span id="list-count-badge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-slate-900 text-white">0건</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">기사를 클릭하면 요약 내용 확인 및 분야/지역 수동 재분류가 가능합니다.</p>
+                </div>
+
+                <!-- Sort Control -->
+                <div class="flex items-center gap-2">
+                    <label for="sort-select" class="text-xs font-medium text-slate-500">정렬:</label>
+                    <select id="sort-select" onchange="applyFilters()" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium bg-white focus:outline-none focus:border-red-500">
+                        <option value="date-desc">최신순 (출고일 내림차순)</option>
+                        <option value="date-asc">오래된순 (출고일 오름차순)</option>
+                        <option value="reporter">기자명순</option>
+                        <option value="category">분야별순</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Responsive Table Wrapper -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                            <th class="py-3.5 px-4 w-28">보도일</th>
+                            <th class="py-3.5 px-4 w-28">분야</th>
+                            <th class="py-3.5 px-4 w-32">지역/출입처</th>
+                            <th class="py-3.5 px-4">기사 제목 및 핵심 태그</th>
+                            <th class="py-3.5 px-4 w-28">취재기자</th>
+                            <th class="py-3.5 px-4 w-20 text-center">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="article-table-body" class="divide-y divide-slate-100 text-sm">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden py-16 px-4 text-center">
+                <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="search-x" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-base font-bold text-slate-800">조건에 일치하는 기사가 없습니다</h4>
+                <p class="text-xs text-slate-500 mt-1">필터 조건을 초기화하거나 새로운 기사 데이터를 불러와 주세요.</p>
+                <button onclick="resetFilters()" class="mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors">
+                    필터 초기화
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-5 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p>SK브로드밴드 부산보도국 기사 정리·분석 대시보드 (프로토타입)</p>
+            <p>브라우저 보안(CORS) 준수를 위해 로컬 스토리지 자동 저장 및 HTML/텍스트 파싱 엔진을 지원합니다.</p>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 1: Data Import & Smart HTML/Text Parser Modal -->
+    <!-- ===================================================================== -->
+    <div id="add-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <h3 class="text-base font-bold text-slate-900">새 기사 단건 등록</h3>
+                <button onclick="closeModal('add-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="handleAddSingleArticle(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">기사 제목 *</label>
+                    <input type="text" id="add-title" required placeholder="예: 사상구, 노후 공단 스마트 그린산단 전환 본격화" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">취재 기자 *</label>
+                        <input type="text" id="add-reporter" required placeholder="예: 김석진" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">보도일 *</label>
+                        <input type="date" id="add-date" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">주제 분야 (자동감지 가능)</label>
+                        <select id="add-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                            <option value="AUTO">제목 기반 자동 분류</option>
+                            <option value="시정·행정">시정·행정</option>
+                            <option value="교육">교육</option>
+                            <option value="경제·산업">경제·산업</option>
+                            <option value="도시·교통">도시·교통</option>
+                            <option value="사회·안전">사회·안전</option>
+                            <option value="문화·복지">문화·복지</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">자치구 / 출입처</label>
+                        <select id="add-district" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                            <option value="AUTO">제목 기반 자동 감지</option>
+                            <option value="부산시 전역">부산시 전역</option>
+                            <option value="부산시청">부산시청</option>
+                            <option value="부산시의회">부산시의회</option>
+                            <option value="부산시교육청">부산시교육청</option>
+                            <option value="강서구">강서구</option>
+                            <option value="남구">남구</option>
+                            <option value="수영구">수영구</option>
+                            <option value="동구">동구</option>
+                            <option value="해운대구">해운대구</option>
+                            <option value="서구·동구">서구·동구</option>
+                            <option value="사하구">사하구</option>
+                            <option value="사상구">사상구</option>
+                            <option value="북구">북구</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">리드문 / 요약 (선택)</label>
+                    <textarea id="add-summary" rows="3" placeholder="기사 핵심 요약 내용을 입력하세요." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('add-modal')" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">취소</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700">기사 추가</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 3: Article Detail & Re-classification Modal -->
+    <!-- ===================================================================== -->
+    <div id="detail-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <span class="text-xs font-bold text-red-600 uppercase tracking-wider">기사 상세 정보 및 분류 수정</span>
+                <button onclick="closeModal('detail-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="detail-id">
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span id="detail-date" class="font-semibold text-slate-700">2026-11-18</span>
+                    <span>•</span>
+                    <span id="detail-reporter" class="font-bold text-blue-600">김석진 기자</span>
+                </div>
+                <h3 id="detail-title" class="text-lg font-bold text-slate-900 leading-snug">기사 제목</h3>
+                <p id="detail-summary" class="text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 leading-relaxed">
+                    기사 요약 내용이 표시됩니다.
+                </p>
+
+                <!-- Reclassification Controls -->
+                <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">주제 분야 변경</label>
+                        <select id="detail-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                            <option value="시정·행정">시정·행정</option>
+                            <option value="교육">교육</option>
+                            <option value="경제·산업">경제·산업</option>
+                            <option value="도시·교통">도시·교통</option>
+                            <option value="사회·안전">사회·안전</option>
+                            <option value="문화·복지">문화·복지</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">자치구/출입처 변경</label>
+                        <select id="detail-district" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                            <option value="부산시 전역">부산시 전역</option>
+                            <option value="부산시청">부산시청</option>
+                            <option value="부산시의회">부산시의회</option>
+                            <option value="부산시교육청">부산시교육청</option>
+                            <option value="강서구">강서구</option>
+                            <option value="남구">남구</option>
+                            <option value="수영구">수영구</option>
+                            <option value="동구">동구</option>
+                            <option value="해운대구">해운대구</option>
+                            <option value="서구·동구">서구·동구</option>
+                            <option value="사하구">사하구</option>
+                            <option value="사상구">사상구</option>
+                            <option value="북구">북구</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-4">
+                    <a id="detail-link" href="https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:underline">
+                        <span>SK브로드밴드 뉴스에서 보기</span>
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                    <div class="flex gap-2">
+                        <button onclick="deleteCurrentArticle()" class="px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50">삭제</button>
+                        <button onclick="saveDetailChanges()" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">분류 저장</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // =========================================================================
+        // 1. STATE & CONSTANTS
+        // =========================================================================
+        const STORAGE_KEY = 'skb_busan_news_articles_v2_real';
+        // 로컬 파일로 열 때만 배포 주소를 넣으세요. 예) 'https://내프로젝트.vercel.app'  (Vercel에서 열면 빈 문자열)
+        const SKB_API_BASE = '';
+        const SKB_API = SKB_API_BASE + '/api/skb';
+        // 자동 수집 시작일 (이 날짜보다 오래된 기사는 가져오지 않음). 기본: 올해 1월 1일
+        const SKB_START_DATE = new Date().getFullYear() + '-01-01';
+        const DEFAULT_NEWSROOM_URL = 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm';
+
+        let allArticles = [];
+        let filteredArticles = [];
+
+        // Chart Instances
+        let trendChartInstance = null;
+        let reporterChartInstance = null;
+        let categoryChartInstance = null;
+        let districtChartInstance = null;
+
+        // Category Styling & Auto-Classification Keywords
+        const CATEGORY_CONFIG = {
+            '시정·행정': {
+                badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                color: '#4f46e5',
+                keywords: ['부산시', '시의회', '구청', '행정', '조례', '예산', '정책', '국비', '공모', '박형준', '구청장', '인사', '협약', '개청', '신청사']
+            },
+            '교육': {
+                badge: 'bg-sky-50 text-sky-700 border-sky-200',
+                color: '#0284c7',
+                keywords: ['교육청', '학교', '학생', '교사', '수능', '돌봄', '늘봄', '대학', '입시', '교육감', '초등', '중학', '고교', '급식', '장학']
+            },
+            '경제·산업': {
+                badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                color: '#059669',
+                keywords: ['경제', '기업', '소상공인', '전통시장', '수출', '일자리', '취업', '창업', '산단', '공단', '조선', '해양', '금융', '투자', '물가', '관광', '유치']
+            },
+            '도시·교통': {
+                badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                color: '#d97706',
+                keywords: ['도시철도', '지하철', '버스', '도로', '터널', '교량', '재개발', '재건축', '주차', '교통', '가덕도', '신공항', '북항', '철도', '트램', '공원']
+            },
+            '사회·안전': {
+                badge: 'bg-rose-50 text-rose-700 border-rose-200',
+                color: '#e11d48',
+                keywords: ['화재', '경찰', '소방', '사고', '안전', '태풍', '침수', '범죄', '단속', '점검', '재난', '피해', '검거', '예방', '폭염', '한파']
+            },
+            '문화·복지': {
+                badge: 'bg-purple-50 text-purple-700 border-purple-200',
+                color: '#9333ea',
+                keywords: ['축제', '문화', '복지', '어르신', '노인', '청년', '출산', '보육', '병원', '의료', '공연', '전시', '도서관', '체육', '불꽃', '영화제', '나눔']
+            }
+        };
+
+        // District Detection Rules (Tailored to SK Broadband Busan Service Areas & Key Institutions)
+        const DISTRICT_RULES = [
+            { name: '부산시의회', keys: ['시의회', '브리핑룸', '기자회견'] },
+            { name: '부산시교육청', keys: ['교육청', '교육감', '늘봄', '학교', '수능', '교육동요'] },
+            { name: '부산시청', keys: ['부산시', '시청', '본예산', '내년 예산', '박형준'] },
+            { name: '강서구', keys: ['강서구', '강서', '명지', '녹산', '가덕', '생곡', '낙동아트센터'] },
+            { name: '남구', keys: ['남구', '용호', '대연', '문현', '유엔기념공원', '산업은행', '턴 투워드'] },
+            { name: '수영구', keys: ['수영구', '수영', '광안리', '광안', '불꽃축제'] },
+            { name: '서구·동구', keys: ['서구·동구', '원도심'] },
+            { name: '동구', keys: ['동구', '북항', '여성문화회관', '초량', '부산역'] },
+            { name: '해운대구', keys: ['해운대구', '해운대', '센텀', '벡스코', '의료관광'] },
+            { name: '사하구', keys: ['사하구', '사하', '다대포', '감천', '하단', '장림'] },
+            { name: '사상구', keys: ['사상구', '사상', '삼락', '엄궁', '감전'] },
+            { name: '북구', keys: ['북구', '구포', '화명', '덕천', '만덕'] }
+        ];
+
+        // Korean Stopwords for Keyword Frequency Analysis
+        const STOPWORDS = new Set([
+            '부산', '부산시', '기자', '오늘', '내일', '올해', '내년', '추진', '본격', '개최', '마련',
+            '지원', '확대', '강화', '위해', '통해', '대한', '관련', '실시', '운영', '진행', '방안',
+            '대책', '현장', '지역', '주민', '시민', '사업', '계획', '예정', '시작', '완료', '달성', '주간'
+        ]);
+
+        // =========================================================================
+        // 2. AUTO-CLASSIFICATION & SMART PARSER ENGINE
+        // =========================================================================
+        function detectCategory(text) {
+            let bestCategory = '시정·행정';
+            let maxScore = 0;
+
+            for (const [cat, config] of Object.entries(CATEGORY_CONFIG)) {
+                let score = 0;
+                for (const kw of config.keywords) {
+                    if (text.includes(kw)) score++;
+                }
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestCategory = cat;
+                }
+            }
+            return bestCategory;
+        }
+
+        function detectDistrict(text) {
+            for (const rule of DISTRICT_RULES) {
+                if (rule.keys.some(k => text.includes(k))) {
+                    return rule.name;
+                }
+            }
+            return '부산시 전역';
+        }
+
+        // =========================================================================
+        // 3. REAL COLLECTED DATASET (news.skbroadband.com Busan Newsroom, 20 items)
+        // =========================================================================
+        function generateSampleArticles() {
+            return [
+                {
+                    id: '243507',
+                    title: '[부산 오늘 기자회견] 11월18일',
+                    reporter: '김석진 기자',
+                    date: '2026-11-18',
+                    category: '시정·행정',
+                    district: '부산시의회',
+                    summary: '부산시의회 브리핑룸 주요 기자회견 일정 안내',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243507'
+                },
+                {
+                    id: '243342',
+                    title: "남구 '청년기본소득' 조례 부결… 여야 공방",
+                    reporter: '박철우 기자',
+                    date: '2026-11-16',
+                    category: '시정·행정',
+                    district: '남구',
+                    summary: '부산 남구의회 청년기본소득 조례 부결 및 여야 공방 보도',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243342'
+                },
+                {
+                    id: '243337',
+                    title: '클래식 명반 부산에서…낙동아트센터, 녹음실 변신',
+                    reporter: '장동원 기자',
+                    date: '2026-11-16',
+                    category: '문화·복지',
+                    district: '강서구',
+                    summary: '서부산권 첫 클래식 전용극장 낙동아트센터 전문 음원 녹음 시스템 구축',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243337'
+                },
+                {
+                    id: '243335',
+                    title: '부산시민단체 "지역거점항공사 대책 마련해야"',
+                    reporter: '김석진 기자',
+                    date: '2026-11-16',
+                    category: '경제·산업',
+                    district: '부산시 전역',
+                    summary: '부울경 11개 시민단체 통합LCC 출범에 따른 에어부산 독립 존치 및 지역거점항공사 확보 촉구',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243335'
+                },
+                {
+                    id: '243328',
+                    title: '부산 2027년 본예산 19조…미래 대전환',
+                    reporter: '박동욱 기자',
+                    date: '2026-11-16',
+                    category: '시정·행정',
+                    district: '부산시청',
+                    summary: '부산시 2027년도 본예산 19조 원 편성 및 미래 대전환 주요 투자 방향',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243328'
+                },
+                {
+                    id: '243313',
+                    title: "부산 강서구 주민 '생곡소각장 반대' 집회",
+                    reporter: '박동욱 기자',
+                    date: '2026-11-16',
+                    category: '사회·안전',
+                    district: '강서구',
+                    summary: '강서구 주민 집회 및 생곡소각장 전면 백지화 촉구',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243313'
+                },
+                {
+                    id: '243244',
+                    title: "부산 여성문화회관, 20일 '예술의 밤' 개최",
+                    reporter: '김희수 국장',
+                    date: '2026-11-16',
+                    category: '문화·복지',
+                    district: '동구',
+                    summary: "부산여성문화회관 20일 '예술의 밤' 개최 및 민요판소리 등 공연 안내",
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243244'
+                },
+                {
+                    id: '243210',
+                    title: '[THE 영상] 2026 부산 불꽃축제',
+                    reporter: '박동욱 기자',
+                    date: '2026-11-13',
+                    category: '문화·복지',
+                    district: '수영구',
+                    summary: '광안리해수욕장·이기대·동백섬 일원 제21회 부산불꽃축제 현장 영상',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243210'
+                },
+                {
+                    id: '243205',
+                    title: '강서구 주민 집회 "생곡소각장 원천 무효"',
+                    reporter: '장동원 기자',
+                    date: '2026-11-13',
+                    category: '사회·안전',
+                    district: '강서구',
+                    summary: '부산시 명지소각장 폐쇄 방침 속 강서구 주민들 시청 앞 생곡소각장 백지화 집회',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243205'
+                },
+                {
+                    id: '243200',
+                    title: '부산 강서구, 통합 LCC 유치 총력',
+                    reporter: '박동욱 기자',
+                    date: '2026-11-13',
+                    category: '경제·산업',
+                    district: '강서구',
+                    summary: '부산 강서구의 통합 저비용항공사(LCC) 본사 유치 총력 대응',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243200'
+                },
+                {
+                    id: '243195',
+                    title: '[부산 주간 기자회견] 11월16일~20일',
+                    reporter: '김석진 기자',
+                    date: '2026-11-13',
+                    category: '시정·행정',
+                    district: '부산시의회',
+                    summary: '11월 3주차 부산 지역 주요 기관 및 시민단체 기자회견 주간 일정',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243195'
+                },
+                {
+                    id: '243187',
+                    title: '부산국제의료관광컨벤션 개막…14개국 바이어 참여',
+                    reporter: '김석진 기자',
+                    date: '2026-11-13',
+                    category: '경제·산업',
+                    district: '해운대구',
+                    summary: '2026 부산국제의료관광컨벤션 개막 및 14개국 해외 바이어 참여',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243187'
+                },
+                {
+                    id: '243019',
+                    title: "'세계가 부산을 향해… 1분의 추모'",
+                    reporter: '박철우 기자',
+                    date: '2026-11-12',
+                    category: '사회·안전',
+                    district: '남구',
+                    summary: '유엔기념공원 턴 투워드 부산 20주년 국제 추모 행사 및 블랙이글스 추모 비행',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243019'
+                },
+                {
+                    id: '242857',
+                    title: '부산 내년 예산 19조3500억 원…미래 대전환',
+                    reporter: '장동원 기자',
+                    date: '2026-11-10',
+                    category: '시정·행정',
+                    district: '부산시청',
+                    summary: '부산시 2027년 예산 19조3,500억 원 편성 및 부산형 대중교통 통합패스 도입 추진',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242857'
+                },
+                {
+                    id: '242676',
+                    title: '부산수학축전 13일 개막…체험부스 86개 운영',
+                    reporter: '박재한 기자',
+                    date: '2026-11-09',
+                    category: '교육',
+                    district: '해운대구',
+                    summary: '부산수학문화관 주관 2026 부산수학축전 벡스코 개최 및 체험부스 86개 운영',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242676'
+                },
+                {
+                    id: '242311',
+                    title: '부산 원도심 교육혁신…지역 인재 키운다',
+                    reporter: '박재한 기자',
+                    date: '2026-11-04',
+                    category: '교육',
+                    district: '서구·동구',
+                    summary: '부산시·교육청·지역 대학·산업 연계 원도심 교육환경 개선 및 인재 양성',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242311'
+                },
+                {
+                    id: '242304',
+                    title: "부산시, 불꽃축제 '공정가격 숙박업소' 34곳 공개",
+                    reporter: '김희수 국장',
+                    date: '2026-11-04',
+                    category: '시정·행정',
+                    district: '수영구',
+                    summary: '불꽃축제 대비 바가지요금 근절 위한 공정가격 숙박업소 34곳 비짓부산 공개',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242304'
+                },
+                {
+                    id: '242022',
+                    title: "부산 북항 돔 아레나…'5만 석 VS 1만 석'",
+                    reporter: '김석진 기자',
+                    date: '2026-11-02',
+                    category: '도시·교통',
+                    district: '동구',
+                    summary: '부산 북항 돔 아레나 건립 규모(5만 석 vs 1만 석) 둘러싼 쟁점 분석',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242022'
+                },
+                {
+                    id: '241821',
+                    title: "'2026 부산교육동요·합창제' 3일 개막",
+                    reporter: '박재한 기자',
+                    date: '2026-10-30',
+                    category: '교육',
+                    district: '부산시교육청',
+                    summary: '부산지역 초·중·고 학생들이 참여하는 2026 부산교육동요·합창제 개최 소식',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=241821'
+                },
+                {
+                    id: '241438',
+                    title: '부산 금융중심지 도약… 산업은행 이전이 관건',
+                    reporter: '박철우 기자',
+                    date: '2026-10-27',
+                    category: '경제·산업',
+                    district: '남구',
+                    summary: '남구의회 산업은행 문현금융단지 이전 촉구 결의문 채택 및 제2차 공공기관 이전 쟁점',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=241438'
+                }
+            ];
+        }
+
+        function loadDefaultSampleData(notify = false) {
+            allArticles = generateSampleArticles();
+            saveArticlesToStorage();
+            populateFilterOptions();
+            resetFilters();
+            if (notify) {
+                showToast('SK브로드밴드 부산보도국 실제 수집 기사 20건으로 초기화되었습니다.', 'success');
+            }
+        }
+
+        // =========================================================================
+        // 4. STORAGE & DATA MANAGEMENT
+        // =========================================================================
+        function saveArticlesToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allArticles));
+            } catch (e) {
+                console.error('Storage save error:', e);
+            }
+        }
+
+        function loadArticlesFromStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        allArticles = parsed;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error('Storage load error:', e);
+            }
+            allArticles = [];
+        }
+
+        // =========================================================================
+        // 4-1. AUTO COLLECTION (Vercel /api/skb → news.skbroadband.com 부산보도국)
+        // =========================================================================
+        let isCollecting = false;
+
+        function setCollectStatus(text) {
+            const el = document.getElementById('collect-status');
+            if (el) el.textContent = text;
+        }
+
+        async function refreshFromSite(ev) {
+            if (isCollecting) return;
+            const full = !!(ev && ev.shiftKey);
+            const auto = !!(ev && ev.auto);
+            const btn = document.getElementById('refresh-btn');
+            isCollecting = true;
+            if (btn) btn.classList.add('collecting');
+            setCollectStatus('부산보도국 기사 수집 중...');
+
+            const known = new Set(allArticles.map(a => String(a.id)));
+            const incremental = !full && known.size > 0;
+            const fetched = [];
+            let start = 1, state = null, prevLast = null, error = null;
+
+            try {
+                for (let guard = 0; guard < 400; guard++) {
+                    const qs = new URLSearchParams({ start, count: 6, since: SKB_START_DATE });
+                    if (state) { qs.set('y', state.y); qs.set('m', state.m); }
+                    let res;
+                    try {
+                        res = await fetch(SKB_API + '?' + qs.toString());
+                    } catch (netErr) {
+                        throw new Error('자동 수집 서버(/api/skb)에 연결하지 못했습니다. Vercel에 배포한 주소에서 열거나, 파일 상단 SKB_API_BASE에 배포 주소를 넣어주세요.');
+                    }
+                    let data;
+                    try { data = await res.json(); }
+                    catch (parseErr) { throw new Error('서버 응답을 해석하지 못했습니다 (HTTP ' + res.status + '). /api/skb 가 배포되어 있는지 확인하세요.'); }
+                    if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP ' + res.status));
+
+                    fetched.push(...data.items);
+                    state = data.state;
+                    start = data.nextStart;
+                    setCollectStatus('수집 중... 부산 기사 ' + fetched.length + '건 확인 (' + (data.lastDate || '') + ' 까지)');
+
+                    if (data.done) break;
+                    if (data.rawLastId && data.rawLastId === prevLast) break;
+                    prevLast = data.rawLastId;
+                    if (incremental && data.items.some(it => known.has(String(it.id)))) break;
+                }
+            } catch (e) {
+                error = e;
+            }
+
+            const fresh = [];
+            const seenNew = new Set();
+            fetched.forEach(it => {
+                const id = String(it.id);
+                if (known.has(id) || seenNew.has(id)) return;
+                seenNew.add(id);
+                fresh.push({
+                    id,
+                    title: it.title,
+                    reporter: it.reporter || '부산보도국',
+                    date: it.date,
+                    category: detectCategory(it.title),
+                    district: detectDistrict(it.title),
+                    summary: it.title,
+                    url: it.url
+                });
+            });
+
+            if (fresh.length > 0) {
+                allArticles = [...fresh, ...allArticles];
+                saveArticlesToStorage();
+                populateFilterOptions();
+                applyFilters();
+            }
+
+            if (error && allArticles.length === 0) {
+                loadDefaultSampleData(false);
+            }
+
+            const hhmm = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+            if (error) {
+                setCollectStatus('수집 실패 · 기존 ' + allArticles.length + '건 표시 중');
+                showToast(error.message, 'error');
+            } else {
+                setCollectStatus('마지막 수집 ' + hhmm + ' · 신규 ' + fresh.length + '건 · 총 ' + allArticles.length + '건');
+                if (!auto || fresh.length > 0) showToast(fresh.length > 0 ? '부산보도국 신규 기사 ' + fresh.length + '건을 가져왔습니다.' : '이미 최신 상태입니다.', fresh.length > 0 ? 'success' : 'info');
+            }
+            isCollecting = false;
+            if (btn) btn.classList.remove('collecting');
+        }
+
+        function handleAddSingleArticle(e) {
+            e.preventDefault();
+            const title = document.getElementById('add-title').value.trim();
+            const reporter = document.getElementById('add-reporter').value.trim();
+            const date = document.getElementById('add-date').value;
+            let category = document.getElementById('add-category').value;
+            let district = document.getElementById('add-district').value;
+            const summary = document.getElementById('add-summary').value.trim() || `${title} 관련 SK브로드밴드 부산보도국 취재 기사입니다.`;
+
+            if (category === 'AUTO') category = detectCategory(title + ' ' + summary);
+            if (district === 'AUTO') district = detectDistrict(title + ' ' + summary);
+
+            const newArticle = {
+                id: 'manual_' + Date.now(),
+                title,
+                reporter,
+                date,
+                category,
+                district,
+                summary,
+                url: DEFAULT_NEWSROOM_URL
+            };
+
+            allArticles.unshift(newArticle);
+            saveArticlesToStorage();
+            populateFilterOptions();
+            applyFilters();
+            closeModal('add-modal');
+            e.target.reset();
+            document.getElementById('add-date').value = getTodayStr();
+            showToast('새 기사가 추가되었습니다.', 'success');
+        }
+
+        // =========================================================================
+        // 5. FILTERING, SORTING & DATE PRESETS
+        // =========================================================================
+        function formatReporterLabel(name) {
+            return /(기자|국장|팀장|부장|특파원)$/.test(name) ? name : `${name} 기자`;
+        }
+
+        function populateFilterOptions() {
+            // Reporters
+            const repSelect = document.getElementById('filter-reporter');
+            const currentRep = repSelect.value;
+            const reporters = [...new Set(allArticles.map(a => a.reporter))].sort();
+            repSelect.innerHTML = '<option value="ALL">전체 기자 (' + reporters.length + '명)</option>';
+            reporters.forEach(rep => {
+                const opt = document.createElement('option');
+                opt.value = rep;
+                opt.textContent = formatReporterLabel(rep);
+                repSelect.appendChild(opt);
+            });
+            if (reporters.includes(currentRep)) repSelect.value = currentRep;
+
+            // Districts
+            const distSelect = document.getElementById('filter-district');
+            const currentDist = distSelect.value;
+            const districts = [...new Set(allArticles.map(a => a.district))].sort();
+            distSelect.innerHTML = '<option value="ALL">전체 지역/기관</option>';
+            districts.forEach(dist => {
+                const opt = document.createElement('option');
+                opt.value = dist;
+                opt.textContent = dist;
+                distSelect.appendChild(opt);
+            });
+            if (districts.includes(currentDist)) distSelect.value = currentDist;
+        }
+
+        function setDatePreset(preset) {
+            // Update UI button state
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                if (btn.dataset.preset === preset) {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md bg-white text-slate-900 shadow-sm font-bold transition-all';
+                } else {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all';
+                }
+            });
+
+            const startEl = document.getElementById('filter-date-start');
+            const endEl = document.getElementById('filter-date-end');
+            // Anchor relative presets to latest dataset date (or today)
+            const latestDateStr = allArticles.length > 0
+                ? [...allArticles].sort((a, b) => b.date.localeCompare(a.date))[0].date
+                : getTodayStr();
+            const anchorDate = new Date(latestDateStr + 'T00:00:00');
+
+            if (preset === 'all') {
+                startEl.value = '';
+                endEl.value = '';
+            } else if (preset === '7d') {
+                const past = new Date(anchorDate);
+                past.setDate(past.getDate() - 7);
+                startEl.value = past.toISOString().split('T')[0];
+                endEl.value = latestDateStr;
+            } else if (preset === '15d') {
+                const past = new Date(anchorDate);
+                past.setDate(past.getDate() - 15);
+                startEl.value = past.toISOString().split('T')[0];
+                endEl.value = latestDateStr;
+            } else if (preset === '2026-11') {
+                startEl.value = '2026-11-01';
+                endEl.value = '2026-11-30';
+            } else if (preset === '2026-10') {
+                startEl.value = '2026-10-01';
+                endEl.value = '2026-10-31';
+            }
+            applyFilters();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-date-start').value = '';
+            document.getElementById('filter-date-end').value = '';
+            document.getElementById('filter-reporter').value = 'ALL';
+            document.getElementById('filter-category').value = 'ALL';
+            document.getElementById('filter-district').value = 'ALL';
+            document.getElementById('filter-keyword').value = '';
+            
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                if (btn.dataset.preset === 'all') {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md bg-white text-slate-900 shadow-sm font-bold transition-all';
+                } else {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all';
+                }
+            });
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const startDate = document.getElementById('filter-date-start').value;
+            const endDate = document.getElementById('filter-date-end').value;
+            const reporter = document.getElementById('filter-reporter').value;
+            const category = document.getElementById('filter-category').value;
+            const district = document.getElementById('filter-district').value;
+            const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
+            const sortBy = document.getElementById('sort-select').value;
+
+            // Active filter indicator
+            const hasFilter = startDate || endDate || reporter !== 'ALL' || category !== 'ALL' || district !== 'ALL' || keyword !== '';
+            const badge = document.getElementById('active-filter-badge');
+            if (hasFilter) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
+
+            filteredArticles = allArticles.filter(art => {
+                if (startDate && art.date < startDate) return false;
+                if (endDate && art.date > endDate) return false;
+                if (reporter !== 'ALL' && art.reporter !== reporter) return false;
+                if (category !== 'ALL' && art.category !== category) return false;
+                if (district !== 'ALL' && art.district !== district) return false;
+                if (keyword) {
+                    const hay = `${art.title} ${art.summary} ${art.reporter} ${art.district} ${art.category}`.toLowerCase();
+                    if (!hay.includes(keyword)) return false;
+                }
+                return true;
+            });
+
+            // Sorting
+            filteredArticles.sort((a, b) => {
+                if (sortBy === 'date-desc') return b.date.localeCompare(a.date);
+                if (sortBy === 'date-asc') return a.date.localeCompare(b.date);
+                if (sortBy === 'reporter') return a.reporter.localeCompare(b.reporter);
+                if (sortBy === 'category') return a.category.localeCompare(b.category);
+                return 0;
+            });
+
+            updateDashboardUI();
+        }
+
+        // =========================================================================
+        // 6. DASHBOARD ANALYTICS, CHARTS & TABLE RENDERING
+        // =========================================================================
+        function updateDashboardUI() {
+            updateKPIs();
+            renderCharts();
+            renderKeywordCloud();
+            renderArticleTable();
+        }
+
+        function updateKPIs() {
+            const total = filteredArticles.length;
+            const allCount = allArticles.length;
+            document.getElementById('kpi-total').textContent = total.toLocaleString();
+            const pct = allCount > 0 ? Math.round((total / allCount) * 100) : 0;
+            document.getElementById('kpi-total-sub').textContent = `전체 ${allCount}건 중 ${pct}% 표시`;
+
+            if (total === 0) {
+                document.getElementById('kpi-reporter-count').textContent = '0';
+                document.getElementById('kpi-top-reporter-info').textContent = '최다 출고: -';
+                document.getElementById('kpi-top-category').textContent = '-';
+                document.getElementById('kpi-daily-avg-info').textContent = '일평균 0.0건 출고';
+                document.getElementById('kpi-top-district').textContent = '-';
+                document.getElementById('kpi-date-span').textContent = '데이터 없음';
+                return;
+            }
+
+            // Date span & Daily Average
+            const dates = filteredArticles.map(a => a.date).sort();
+            const minDate = new Date(dates[0]);
+            const maxDate = new Date(dates[dates.length - 1]);
+            const diffDays = Math.max(1, Math.round((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1);
+            const dailyAvg = (total / diffDays).toFixed(1);
+            document.getElementById('kpi-date-span').textContent = `${dates[0]} ~ ${dates[dates.length - 1]}`;
+
+            // Participating Reporters & Top Reporter
+            const repCounts = countBy(filteredArticles, 'reporter');
+            const repEntries = Object.entries(repCounts).sort((a, b) => b[1] - a[1]);
+            const topRep = repEntries[0];
+            document.getElementById('kpi-reporter-count').textContent = repEntries.length.toLocaleString();
+            document.getElementById('kpi-top-reporter-info').textContent = `최다: ${formatReporterLabel(topRep[0])} (${topRep[1]}건)`;
+
+            // Top Category & District
+            const catCounts = countBy(filteredArticles, 'category');
+            const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('kpi-top-category').textContent = `${topCat[0]} (${topCat[1]}건)`;
+            document.getElementById('kpi-daily-avg-info').textContent = `비중 ${Math.round((topCat[1] / total) * 100)}% · 일평균 ${dailyAvg}건`;
+
+            const distCounts = countBy(filteredArticles, 'district');
+            const topDist = Object.entries(distCounts).sort((a, b) => b[1] - a[1])[0];
+            document.getElementById('kpi-top-district').textContent = `${topDist[0]} (${topDist[1]}건)`;
+        }
+
+        function renderCharts() {
+            // 1. Trend Chart (Date-based)
+            const dateCounts = countBy(filteredArticles, 'date');
+            const sortedDates = Object.keys(dateCounts).sort();
+            const trendLabels = sortedDates.map(d => d.slice(5)); // MM-DD
+            const trendValues = sortedDates.map(d => dateCounts[d]);
+
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [{
+                        label: '출고 기사 수',
+                        data: trendValues,
+                        borderColor: '#ea002c',
+                        backgroundColor: 'rgba(234, 0, 44, 0.08)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#ea002c',
+                        pointRadius: 3.5,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, precision: 0 },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // 2. Reporter Horizontal Bar Chart
+            const repCounts = countBy(filteredArticles, 'reporter');
+            const sortedReps = Object.entries(repCounts).sort((a, b) => b[1] - a[1]);
+
+            if (reporterChartInstance) reporterChartInstance.destroy();
+            reporterChartInstance = new Chart(document.getElementById('reporterChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedReps.map(r => r[0]),
+                    datasets: [{
+                        label: '기사 건수',
+                        data: sortedReps.map(r => r[1]),
+                        backgroundColor: '#1e293b',
+                        hoverBackgroundColor: '#f47725',
+                        borderRadius: 6,
+                        barThickness: 18
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const clickedRep = sortedReps[idx][0];
+                            const repSelect = document.getElementById('filter-reporter');
+                            repSelect.value = (repSelect.value === clickedRep) ? 'ALL' : clickedRep;
+                            applyFilters();
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, precision: 0 },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        y: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // 3. Category Doughnut Chart
+            const catCounts = countBy(filteredArticles, 'category');
+            const sortedCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+            const catColors = sortedCats.map(c => CATEGORY_CONFIG[c[0]]?.color || '#64748b');
+
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            categoryChartInstance = new Chart(document.getElementById('categoryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: sortedCats.map(c => c[0]),
+                    datasets: [{
+                        data: sortedCats.map(c => c[1]),
+                        backgroundColor: catColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const clickedCat = sortedCats[idx][0];
+                            const catSelect = document.getElementById('filter-category');
+                            catSelect.value = (catSelect.value === clickedCat) ? 'ALL' : clickedCat;
+                            applyFilters();
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { boxWidth: 12, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // 4. District / Beat Bar Chart (Top 8)
+            const distCounts = countBy(filteredArticles, 'district');
+            const sortedDists = Object.entries(distCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+            if (districtChartInstance) districtChartInstance.destroy();
+            districtChartInstance = new Chart(document.getElementById('districtChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedDists.map(d => d[0]),
+                    datasets: [{
+                        label: '보도 건수',
+                        data: sortedDists.map(d => d[1]),
+                        backgroundColor: '#0284c7',
+                        borderRadius: 6,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const clickedDist = sortedDists[idx][0];
+                            const distSelect = document.getElementById('filter-district');
+                            distSelect.value = (distSelect.value === clickedDist) ? 'ALL' : clickedDist;
+                            applyFilters();
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, precision: 0 },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            ticks: { font: { size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderKeywordCloud() {
+            const container = document.getElementById('keyword-cloud');
+            if (filteredArticles.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400">표시할 키워드가 없습니다.</p>';
+                return;
+            }
+
+            const freq = {};
+            filteredArticles.forEach(art => {
+                // Combine title and summary to extract rich issue keywords (e.g., 예산, 생곡소각장, 불꽃축제, 통합LCC, 북항, 산업은행, 청년기본소득)
+                const combinedText = `${art.title} ${art.summary}`;
+                const words = combinedText
+                    .replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s]/g, ' ')
+                    .split(/\s+/)
+                    .map(w => w.replace(/(은|는|이|가|을|를|의|에|서|로|으로|와|과|도|만|까지|에서|부터)$/, ''))
+                    .filter(w => w.length >= 2 && !STOPWORDS.has(w) && !/^\d+$/.test(w));
+
+                // Count unique keywords per article so single article doesn't over-inflate
+                new Set(words).forEach(w => {
+                    freq[w] = (freq[w] || 0) + 1;
+                });
+            });
+
+            const topKeywords = Object.entries(freq)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 12);
+
+            if (topKeywords.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400">추출된 핵심 키워드가 없습니다.</p>';
+                return;
+            }
+
+            const maxFreq = topKeywords[0][1];
+            container.innerHTML = topKeywords.map(([word, count], idx) => {
+                const isTop3 = idx < 3;
+                const styleClass = isTop3
+                    ? 'bg-red-50 text-red-700 border-red-200 font-bold text-sm px-3 py-1.5'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 font-medium text-xs px-2.5 py-1';
+                return `
+                    <button onclick="quickSearchKeyword('${word}')" class="inline-flex items-center gap-1.5 rounded-full border hover:border-red-400 hover:bg-red-50/70 transition-all cursor-pointer ${styleClass}">
+                        <span>#${word}</span>
+                        <span class="text-[11px] opacity-75">(${count})</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function quickSearchKeyword(word) {
+            const input = document.getElementById('filter-keyword');
+            input.value = (input.value === word) ? '' : word;
+            applyFilters();
+        }
+
+        function renderArticleTable() {
+            const tbody = document.getElementById('article-table-body');
+            const emptyState = document.getElementById('empty-state');
+            document.getElementById('list-count-badge').textContent = `${filteredArticles.length}건`;
+
+            if (filteredArticles.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = filteredArticles.map(art => {
+                const catStyle = CATEGORY_CONFIG[art.category]?.badge || 'bg-slate-100 text-slate-700 border-slate-200';
+                return `
+                    <tr onclick="openArticleDetail('${art.id}')" class="hover:bg-slate-50/90 transition-colors cursor-pointer group">
+                        <td class="py-3.5 px-4 text-xs font-mono text-slate-500 whitespace-nowrap">${art.date}</td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${catStyle}">
+                                ${art.category}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium">
+                                <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i>
+                                ${art.district}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-bold text-slate-900 group-hover:text-red-600 transition-colors line-clamp-1">
+                                ${escapeHtml(art.title)}
+                            </div>
+                            <div class="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                                ${escapeHtml(art.summary)}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="text-xs font-bold text-slate-700">${escapeHtml(formatReporterLabel(art.reporter))}</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center whitespace-nowrap" onclick="event.stopPropagation()">
+                            <div class="inline-flex items-center gap-1">
+                                <button onclick="openArticleDetail('${art.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200/60" title="분류 수정">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <a href="${art.url}" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" title="원문 사이트 이동">
+                                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // =========================================================================
+        // 7. DETAIL MODAL & RECLASSIFICATION
+        // =========================================================================
+        function openArticleDetail(id) {
+            const art = allArticles.find(a => a.id === id);
+            if (!art) return;
+
+            document.getElementById('detail-id').value = art.id;
+            document.getElementById('detail-date').textContent = art.date;
+            document.getElementById('detail-reporter').textContent = formatReporterLabel(art.reporter);
+            document.getElementById('detail-title').textContent = art.title;
+            document.getElementById('detail-summary').textContent = art.summary;
+            document.getElementById('detail-category').value = art.category;
+            document.getElementById('detail-district').value = art.district;
+            document.getElementById('detail-link').href = art.url || DEFAULT_NEWSROOM_URL;
+
+            openModal('detail-modal');
+        }
+
+        function saveDetailChanges() {
+            const id = document.getElementById('detail-id').value;
+            const art = allArticles.find(a => a.id === id);
+            if (!art) return;
+
+            art.category = document.getElementById('detail-category').value;
+            art.district = document.getElementById('detail-district').value;
+
+            saveArticlesToStorage();
+            populateFilterOptions();
+            applyFilters();
+            closeModal('detail-modal');
+            showToast('기사 분류 정보가 업데이트되었습니다.', 'success');
+        }
+
+        function deleteCurrentArticle() {
+            const id = document.getElementById('detail-id').value;
+            allArticles = allArticles.filter(a => a.id !== id);
+            saveArticlesToStorage();
+            populateFilterOptions();
+            applyFilters();
+            closeModal('detail-modal');
+            showToast('기사가 목록에서 삭제되었습니다.', 'info');
+        }
+
+        // =========================================================================
+        // 8. EXPORT & IMPORT UTILITIES (CSV / JSON)
+        // =========================================================================
+        function exportCSV() {
+            if (filteredArticles.length === 0) {
+                showToast('내보낼 기사가 없습니다.', 'error');
+                return;
+            }
+            const headers = ['보도일', '분야', '자치구_출입처', '기사제목', '취재기자', '요약', '링크'];
+            const rows = filteredArticles.map(a => [
+                a.date,
+                a.category,
+                a.district,
+                `"${a.title.replace(/"/g, '""')}"`,
+                a.reporter,
+                `"${a.summary.replace(/"/g, '""')}"`,
+                a.url
+            ]);
+
+            // Add UTF-8 BOM for Excel Korean compatibility
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SKB_부산보도국_기사분석_${getTodayStr()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`CSV 파일(${filteredArticles.length}건) 다운로드가 시작되었습니다.`, 'success');
+        }
+
+        // =========================================================================
+        // 9. UI HELPERS (Modals, Tabs, Toast, Formatting)
+        // =========================================================================
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal(id) {
+            const el = document.getElementById(id); if (el) el.classList.add('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-900 text-white border-emerald-700',
+                error: 'bg-red-900 text-white border-red-700',
+                info: 'bg-slate-900 text-white border-slate-700'
+            };
+            toast.className = `px-4 py-3 rounded-xl border shadow-lg text-xs font-semibold flex items-center gap-2 transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function countBy(arr, key) {
+            return arr.reduce((acc, item) => {
+                const val = item[key] || '기타';
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
+        }
+
+        function getTodayStr() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // =========================================================================
+        // 10. INITIALIZATION
+        // =========================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('add-date').value = getTodayStr();
+            loadArticlesFromStorage();
+            populateFilterOptions();
+            applyFilters();
+            lucide.createIcons();
+            refreshFromSite({ auto: true });
+        });
+    </script>
+</body>
+</html>
