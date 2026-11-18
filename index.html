@@ -1566,6 +1566,9 @@
                         y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#f1f5f9' } },
                         x: { grid: { display: false } }
                     }
+                }
+            });
+
             // 2. Reporter Horizontal Bar Chart (4 Reporters + 기타)
             const repCounts = countByReporterGroup(filteredArticles);
             const sortedReps = [...MAIN_REPORTERS, '기타']
