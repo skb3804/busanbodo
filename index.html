@@ -539,6 +539,7 @@
         // =========================================================================
         const STORAGE_KEY = 'skb_busan_news_excel_articles_v1';
         const DEFAULT_NEWSROOM_URL = 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm';
+        const MAIN_REPORTERS = ['김석진', '박철우', '장동원', '박재한'];
 
         let allArticles = [];
         let filteredArticles = [];
@@ -1340,25 +1341,30 @@
         // =========================================================================
         // 6. FILTERING, SORTING & APPLY BUTTON ACTION
         // =========================================================================
-        function formatReporterLabel(name) {
+        function normalizeReporterGroup(name) {
             const clean = String(name || '').trim();
-            if (!clean) return '부산보도국';
-            return /(기자|국장|팀장|부장|특파원|리포터|앵커)$/.test(clean) ? clean : `${clean} 기자`;
+            const found = MAIN_REPORTERS.find(r => clean.includes(r));
+            return found || '기타';
+        }
+
+        function formatReporterLabel(name) {
+            const group = normalizeReporterGroup(name);
+            return group === '기타' ? '기타' : `${group} 기자`;
         }
 
         function populateFilterOptions() {
-            // Reporters
+            // Reporters (Fixed 4 reporters + 기타)
             const repSelect = document.getElementById('filter-reporter');
             const currentRep = repSelect.value;
-            const reporters = [...new Set(allArticles.map(a => a.reporter))].sort();
-            repSelect.innerHTML = '<option value="ALL">전체 기자 (' + reporters.length + '명)</option>';
-            reporters.forEach(rep => {
+            const reporterGroups = [...MAIN_REPORTERS, '기타'];
+            repSelect.innerHTML = '<option value="ALL">전체 기자</option>';
+            reporterGroups.forEach(rep => {
                 const opt = document.createElement('option');
                 opt.value = rep;
                 opt.textContent = formatReporterLabel(rep);
                 repSelect.appendChild(opt);
             });
-            if (reporters.includes(currentRep)) repSelect.value = currentRep;
+            if (reporterGroups.includes(currentRep)) repSelect.value = currentRep;
 
             // Districts
             const distSelect = document.getElementById('filter-district');
@@ -1456,11 +1462,11 @@
             filteredArticles = allArticles.filter(art => {
                 if (startDate && art.date < startDate) return false;
                 if (endDate && art.date > endDate) return false;
-                if (reporter !== 'ALL' && art.reporter !== reporter) return false;
+                if (reporter !== 'ALL' && normalizeReporterGroup(art.reporter) !== reporter) return false;
                 if (category !== 'ALL' && art.category !== category) return false;
                 if (district !== 'ALL' && art.district !== district) return false;
                 if (keyword) {
-                    const hay = `${art.title} ${art.summary} ${art.reporter} ${art.district} ${art.category}`.toLowerCase();
+                    const hay = `${art.title} ${art.summary} ${formatReporterLabel(art.reporter)} ${art.district} ${art.category}`.toLowerCase();
                     if (!hay.includes(keyword)) return false;
                 }
                 return true;
@@ -1469,7 +1475,7 @@
             filteredArticles.sort((a, b) => {
                 if (sortBy === 'date-desc') return b.date.localeCompare(a.date);
                 if (sortBy === 'date-asc') return a.date.localeCompare(b.date);
-                if (sortBy === 'reporter') return a.reporter.localeCompare(b.reporter);
+                if (sortBy === 'reporter') return formatReporterLabel(a.reporter).localeCompare(formatReporterLabel(b.reporter));
                 if (sortBy === 'category') return a.category.localeCompare(b.category);
                 return 0;
             });
@@ -1511,7 +1517,7 @@
             const dailyAvg = (total / diffDays).toFixed(1);
             document.getElementById('kpi-date-span').textContent = `${dates[0]} ~ ${dates[dates.length - 1]}`;
 
-            const repCounts = countBy(filteredArticles, 'reporter');
+            const repCounts = countByReporterGroup(filteredArticles);
             const repEntries = Object.entries(repCounts).sort((a, b) => b[1] - a[1]);
             const topRep = repEntries[0];
             document.getElementById('kpi-reporter-count').textContent = repEntries.length.toLocaleString();
@@ -1560,22 +1566,22 @@
                         y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#f1f5f9' } },
                         x: { grid: { display: false } }
                     }
-                }
-            });
-
-            // 2. Reporter Horizontal Bar Chart (Top 12)
-            const repCounts = countBy(filteredArticles, 'reporter');
-            const sortedReps = Object.entries(repCounts).sort((a, b) => b[1] - a[1]).slice(0, 12);
+            // 2. Reporter Horizontal Bar Chart (4 Reporters + 기타)
+            const repCounts = countByReporterGroup(filteredArticles);
+            const sortedReps = [...MAIN_REPORTERS, '기타']
+                .filter(name => (repCounts[name] || 0) > 0)
+                .map(name => [name, repCounts[name] || 0])
+                .sort((a, b) => b[1] - a[1]);
 
             if (reporterChartInstance) reporterChartInstance.destroy();
             reporterChartInstance = new Chart(document.getElementById('reporterChart'), {
                 type: 'bar',
                 data: {
-                    labels: sortedReps.map(r => r[0]),
+                    labels: sortedReps.map(r => formatReporterLabel(r[0])),
                     datasets: [{
                         label: '기사 건수',
                         data: sortedReps.map(r => r[1]),
-                        backgroundColor: '#1e293b',
+                        backgroundColor: sortedReps.map(r => r[0] === '기타' ? '#94a3b8' : '#1e293b'),
                         hoverBackgroundColor: '#f47725',
                         borderRadius: 6,
                         barThickness: 18
@@ -1843,7 +1849,7 @@
                 a.category,
                 a.district,
                 `"${a.title.replace(/"/g, '""')}"`,
-                a.reporter,
+                formatReporterLabel(a.reporter),
                 `"${a.summary.replace(/"/g, '""')}"`,
                 a.url
             ]);
@@ -1889,6 +1895,14 @@
         function countBy(arr, key) {
             return arr.reduce((acc, item) => {
                 const val = item[key] || '기타';
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
+        }
+
+        function countByReporterGroup(arr) {
+            return arr.reduce((acc, item) => {
+                const val = normalizeReporterGroup(item.reporter);
                 acc[val] = (acc[val] || 0) + 1;
                 return acc;
             }, {});
