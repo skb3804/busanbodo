@@ -71,9 +71,9 @@
 
                 <!-- Action Buttons -->
                 <div class="flex flex-wrap items-center gap-2">
-                    <button onclick="openModal('import-modal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-sm cursor-pointer">
-                        <i data-lucide="file-plus-2" class="w-4 h-4 text-orange-400"></i>
-                        <span>기사 데이터 가져오기 / 파싱</span>
+                    <button onclick="openModal('import-modal')" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer" title="수백 페이지 대용량 수집기 및 수동 가져오기">
+                        <i data-lucide="database" class="w-3.5 h-3.5 text-slate-700"></i>
+                        <span>대용량 전체 수집기</span>
                     </button>
                     <button onclick="openModal('add-modal')" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-all cursor-pointer">
                         <i data-lucide="plus" class="w-4 h-4"></i>
@@ -166,11 +166,22 @@
                 </div>
                 <!-- Apply Button (End of Row) -->
                 <div class="lg:col-span-1">
-                    <button type="button" onclick="handleApplyButtonClick()" class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white text-sm font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap">
-                        <i data-lucide="check" class="w-4 h-4"></i>
+                    <button type="button" id="btn-apply-filter" onclick="handleApplyButtonClick()" class="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white text-sm font-bold shadow-sm transition-all cursor-pointer whitespace-nowrap">
+                        <i data-lucide="play" class="w-3.5 h-3.5"></i>
                         <span>적용하기</span>
                     </button>
                 </div>
+            </div>
+
+            <!-- Live Sync Status Bar -->
+            <div id="sync-status-bar" class="hidden pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div class="flex items-center gap-2">
+                    <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="sync-status-text" class="font-medium text-slate-700">조건에 맞는 부산보도국 기사를 조회 중입니다...</span>
+                </div>
+                <button type="button" id="sync-fallback-btn" onclick="openModal('import-modal')" class="hidden text-xs font-bold text-red-600 hover:underline flex items-center gap-1">
+                    <span>전체 페이지 직접 수집기 열기 →</span>
+                </button>
             </div>
         </section>
 
@@ -376,188 +387,85 @@
     <!-- MODAL 1: Data Import & Smart HTML/Text Parser Modal -->
     <!-- ===================================================================== -->
     <div id="import-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+        <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <!-- Header -->
             <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
                 <div class="flex items-center gap-2">
                     <i data-lucide="database" class="w-5 h-5 text-red-600"></i>
-                    <h3 class="text-lg font-bold text-slate-900">부산보도국 기사 데이터 가져오기 & 파싱</h3>
+                    <h3 class="text-lg font-bold text-slate-900">부산 섹션 기사 전체 자동 수집</h3>
                 </div>
                 <button onclick="closeModal('import-modal')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
 
-            <!-- Tabs -->
-            <div class="flex border-b border-slate-200 px-6 bg-white overflow-x-auto">
-                <button onclick="switchImportTab('live-api')" id="tab-btn-live-api" class="import-tab-btn py-3 px-4 text-sm font-bold border-b-2 border-red-600 text-red-600 whitespace-nowrap flex items-center gap-1.5">
-                    <span>1. 원클릭 실시간 API/프록시 수집</span>
-                    <span class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700">NEW</span>
-                </button>
-                <button onclick="switchImportTab('parser')" id="tab-btn-parser" class="import-tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
-                    2. 복사 / HTML 파싱
-                </button>
-                <button onclick="switchImportTab('auto-script')" id="tab-btn-auto-script" class="import-tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
-                    3. 브라우저 대용량 수집기
-                </button>
-                <button onclick="switchImportTab('sample')" id="tab-btn-sample" class="import-tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
-                    4. 샘플 / 백업
-                </button>
-            </div>
-
-            <!-- Body -->
-            <div class="p-6 overflow-y-auto space-y-4 flex-1">
-                <!-- Tab 0: Direct Live Proxy/API Fetcher -->
-                <div id="import-tab-live-api" class="space-y-4">
-                    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-2">
-                        <p class="font-bold text-sm flex items-center gap-1.5 text-emerald-900">
-                            <i data-lucide="radio" class="w-4 h-4 text-emerald-600"></i>
-                            <span>복사·붙여넣기 없이 대시보드에서 직접 부산보도국 기사 수집</span>
-                        </p>
-                        <p class="leading-relaxed text-emerald-800">
-                            SK브로드밴드 뉴스(엔디소프트 CMS)의 <strong>부산보도국 섹션 엔드포인트(<code>sc_section_code=S1N7</code>)</strong>와 <strong>RSS 피드</strong>를 CORS 우회 게이트웨이로 직접 호출하여 기사 제목, 기자명, 보도일, 본문 요약을 자동 파싱합니다.
-                        </p>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">수집 대상 채널 / 엔드포인트</label>
-                            <select id="live-endpoint-select" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold bg-white">
-                                <option value="S1N7">부산보도국 전체 (sc_section_code=S1N7)</option>
-                                <option value="SEARCH_BUSAN">전체기사 중 '부산' 상세검색 (sc_word=부산)</option>
-                                <option value="RSS">부산보도국 공식 RSS 피드 (rss/S1N7.xml)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">수집 페이지 범위 (페이지당 약 20건)</label>
-                            <select id="live-page-limit" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold bg-white">
-                                <option value="1">1페이지 (최신 약 20건)</option>
-                                <option value="3" selected>3페이지 (최신 약 60건)</option>
-                                <option value="5">5페이지 (최신 약 100건)</option>
-                                <option value="10">10페이지 (최신 약 200건)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Progress Status Box -->
-                    <div id="live-fetch-status" class="hidden p-3.5 rounded-xl bg-slate-900 text-slate-100 text-xs space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span id="live-fetch-msg" class="font-semibold text-emerald-400">서버에 연결하는 중...</span>
-                            <span id="live-fetch-pct" class="font-mono text-slate-400">0%</span>
-                        </div>
-                        <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden">
-                            <div id="live-fetch-bar" class="bg-red-500 h-2 transition-all duration-300" style="width: 0%"></div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between pt-2">
-                        <label class="inline-flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
-                            <input type="checkbox" id="live-replace-check" class="rounded text-red-600 focus:ring-red-500">
-                            <span>기존 데이터 초기화 후 새로 채우기</span>
-                        </label>
-                        <button id="btn-start-live-fetch" onclick="fetchBusanNewsViaProxy()" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer">
-                            <i data-lucide="cloud-download" class="w-4 h-4"></i>
-                            <span>지금 바로 실시간 수집 실행</span>
-                        </button>
-                    </div>
+            <!-- Body (Simplified 2-Step Workflow) -->
+            <div class="p-6 overflow-y-auto space-y-5 flex-1">
+                <!-- Why this works 100% -->
+                <div class="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950 leading-relaxed">
+                    <strong>왜 이 방식이 가장 빠르고 정확한가요?</strong><br>
+                    외부 프록시 서버를 거치면 차단·지연이 발생하지만, <strong>부산 상세검색 창을 직접 연 뒤 콘솔(F12)에 수집 코드를 한 번만 붙여넣으면</strong> 검색된 모든 페이지의 기사를 누락 없이 긁어모아 이 대시보드로 자동 전송합니다.
                 </div>
 
-                <!-- Tab 1: Smart Parser -->
-                <div id="import-tab-parser" class="hidden space-y-4">
-                    <div class="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 space-y-1.5">
-                        <p class="font-bold flex items-center gap-1.5">
-                            <i data-lucide="info" class="w-4 h-4 text-blue-600"></i>
-                            <span>사용 방법 (웹페이지 드래그 복사 또는 HTML 소스 붙여넣기)</span>
-                        </p>
-                        <p class="leading-relaxed text-blue-800">
-                            SK브로드밴드 부산보도국 기사 목록 화면에서 기사들을 드래그해 복사(<code>Ctrl+C</code>)한 뒤 아래 입력창에 붙여넣으면 <strong>제목, 기자명, 보도일, 분야, 자치구를 자동 추출</strong>합니다.
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5">기사 목록 텍스트 / HTML / 수집 JSON 붙여넣기</label>
-                        <textarea id="raw-paste-input" rows="7" placeholder="여기에 SK브로드밴드 부산보도국 페이지에서 복사한 기사 목록이나 HTML 소스, 또는 대용량 수집기 JSON 결과를 붙여넣으세요..." class="w-full rounded-xl border border-slate-300 p-3 text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"></textarea>
-                    </div>
-
+                <!-- Step 1 -->
+                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
                     <div class="flex items-center justify-between">
-                        <label class="inline-flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
-                            <input type="checkbox" id="replace-existing-check" class="rounded text-red-600 focus:ring-red-500">
-                            <span>기존 기사 목록 초기화 후 덮어쓰기</span>
-                        </label>
-                        <button onclick="parseAndImportRawData()" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors cursor-pointer">
-                            자동 추출 및 반영하기
-                        </button>
+                        <span class="text-xs font-extrabold text-red-600 uppercase tracking-wider">STEP 1. 부산 상세검색 페이지 열기</span>
+                        <span class="text-[11px] text-slate-500">섹션: 부산 (S1N7)</span>
                     </div>
+                    <p class="text-xs text-slate-600">아래 버튼을 눌러 SK브로드밴드 부산 기사 목록 창을 엽니다. (필요 시 열린 창에서 상세검색으로 기간·키워드를 더 좁혀도 그대로 수집됩니다.)</p>
+                    <button type="button" onclick="openNewsroomForCollection()" class="w-full py-2.5 px-4 rounded-lg bg-white border border-slate-300 hover:border-red-500 hover:text-red-600 text-slate-900 text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <i data-lucide="external-link" class="w-4 h-4 text-red-600"></i>
+                        <span>SK브로드밴드 '부산' 기사 목록 새 창 열기</span>
+                    </button>
                 </div>
 
-                <!-- Tab 2: Multi-Page Browser Collector -->
-                <div id="import-tab-auto-script" class="hidden space-y-4">
-                    <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-2">
-                        <p class="font-bold text-sm flex items-center gap-1.5 text-amber-900">
-                            <i data-lucide="zap" class="w-4 h-4 text-amber-600"></i>
-                            <span>수백~수천 건 한 번에 수집 (브라우저 직접 호출 방식 — 100% 성공)</span>
-                        </p>
-                        <p class="leading-relaxed text-amber-900">
-                            외부 프록시 서버가 혼잡하거나 차단될 때 사용하는 가장 확실한 방법입니다. 아래 버튼을 브라우저 상단 <strong>북마크바</strong>에 끌어다 놓거나, <strong>코드 복사</strong> 후 부산보도국 페이지 개발자 도구(<code>F12</code> → <code>Console</code>)에서 실행하면 수집 결과가 이 대시보드로 자동 전송됩니다.
-                        </p>
-                        <div class="pt-1 flex flex-wrap items-center gap-2">
-                            <a id="bookmarklet-link" href="#" onclick="event.preventDefault(); showToast('이 버튼을 마우스로 끌어 브라우저 상단 북마크바에 놓아주세요!', 'info');" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 text-white font-bold shadow-sm cursor-move">
-                                <span>📡 SKB 부산기사 자동수집</span>
-                            </a>
-                            <button type="button" onclick="openNewsroomForCollection()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-900 font-bold hover:bg-amber-100/60 cursor-pointer">
-                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                                <span>부산보도국 새 창 열기</span>
-                            </button>
-                        </div>
+                <!-- Step 2 -->
+                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold text-red-600 uppercase tracking-wider">STEP 2. 자동수집기 복사 후 열린 창 F12 콘솔에서 실행</span>
                     </div>
 
-                    <div class="flex items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
-                            <label for="crawl-page-count" class="text-xs font-bold text-slate-700">수집할 페이지 수 (1페이지 ≈ 20건):</label>
+                            <label for="crawl-page-count" class="text-xs font-bold text-slate-700">최대 수집 페이지:</label>
                             <select id="crawl-page-count" onchange="updateCollectorScript()" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold bg-white">
-                                <option value="5">최근 5페이지 (약 100건)</option>
-                                <option value="15" selected>최근 15페이지 (약 300건)</option>
-                                <option value="30">최근 30페이지 (약 600건)</option>
-                                <option value="50">최근 50페이지 (약 1,000건)</option>
-                                <option value="100">최근 100페이지 (약 2,000건)</option>
+                                <option value="10">10페이지 (약 200건)</option>
+                                <option value="30" selected>30페이지 (약 600건)</option>
+                                <option value="50">50페이지 (약 1,000건)</option>
+                                <option value="100">100페이지 (약 2,000건)</option>
+                                <option value="500">500페이지 (사실상 전체 수집)</option>
                             </select>
                         </div>
-                        <button onclick="copyCollectorScript()" class="px-3.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer">
-                            <i data-lucide="copy" class="w-3.5 h-3.5 text-orange-400"></i>
-                            <span>콘솔용 코드 복사</span>
+                        <button type="button" onclick="copyCollectorScript()" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                            <span>수집 코드 복사하기</span>
                         </button>
                     </div>
 
-                    <div>
-                        <textarea id="collector-script-box" rows="6" readonly class="w-full rounded-xl border border-slate-300 bg-slate-900 text-emerald-400 p-3.5 text-xs font-mono leading-relaxed focus:outline-none"></textarea>
-                    </div>
+                    <textarea id="collector-script-box" rows="4" readonly class="w-full rounded-lg border border-slate-300 bg-slate-900 text-emerald-400 p-2.5 text-[11px] font-mono leading-relaxed focus:outline-none"></textarea>
+                    <p class="text-[11px] text-slate-500">
+                        💡 열린 부산 기사 창에서 <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono">F12</kbd> → <strong>Console</strong> 탭 클릭 → <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono">Ctrl+V</kbd> 후 <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded font-mono">Enter</kbd>를 누르면 수집 완료 즉시 이 화면에 반영됩니다.
+                    </p>
                 </div>
 
-                <!-- Tab 3: Sample & JSON -->
-                <div id="import-tab-sample" class="hidden space-y-4">
-                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
-                        <h4 class="text-sm font-bold text-slate-900">SK브로드밴드 부산보도국 실제 수집 데이터셋 (2026년 10월~11월, 20건)</h4>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            <code>news.skbroadband.com</code> 부산보도국에서 실제 송출된 기사 20건(김석진, 박동욱, 박철우, 장동원, 박재한 기자 및 김희수 국장 보도)과 원문 링크(<code>articleView.html?idxno=...</code>)가 포함된 기본 데이터로 복원합니다.
-                        </p>
-                        <button onclick="loadDefaultSampleData(true)" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer">
-                            실제 수집 기사 20건으로 초기화
-                        </button>
-                    </div>
-
-                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
-                        <h4 class="text-sm font-bold text-slate-900">JSON 백업 파일 불러오기 / 내보내기</h4>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="exportJSON()" class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100">
-                                JSON 백업 다운로드
-                            </button>
-                            <label class="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer">
-                                JSON 파일 업로드
-                                <input type="file" accept=".json" onchange="importJSONFile(event)" class="hidden">
+                <!-- Optional Manual Paste / Reset -->
+                <details class="rounded-xl border border-slate-200 bg-white p-3.5 text-xs">
+                    <summary class="font-bold text-slate-700 cursor-pointer select-none">기타: 복사한 텍스트/JSON 직접 붙여넣기 또는 기본 데이터 초기화</summary>
+                    <div class="mt-3 space-y-3 pt-3 border-t border-slate-100">
+                        <textarea id="raw-paste-input" rows="4" placeholder="수집 결과 JSON이나 드래그 복사한 기사 텍스트를 붙여넣으세요..." class="w-full rounded-lg border border-slate-300 p-2.5 text-xs"></textarea>
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <label class="inline-flex items-center gap-1.5 text-slate-600 cursor-pointer">
+                                <input type="checkbox" id="replace-existing-check" class="rounded text-red-600">
+                                <span>기존 데이터 덮어쓰기</span>
                             </label>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="loadDefaultSampleData(true)" class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50">기본 20건 복원</button>
+                                <button type="button" onclick="parseAndImportRawData()" class="px-3.5 py-1.5 rounded-lg bg-slate-900 text-white font-bold hover:bg-slate-800">데이터 반영</button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </details>
             </div>
         </div>
     </div>
@@ -626,132 +534,133 @@
                     <textarea id="add-summary" rows="3" placeholder="기사 핵심 요약 내용을 입력하세요." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeModal('add-modal')" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">취소</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700">기사 추가</button>
-                </div>
-            </form>
-        </div>
-    </div>
+        async function handleApplyButtonClick() {
+            const btn = document.getElementById('btn-apply-filter');
+            const statusBar = document.getElementById('sync-status-bar');
+            const statusDot = document.getElementById('sync-status-dot');
+            const statusText = document.getElementById('sync-status-text');
+            const fallbackBtn = document.getElementById('sync-fallback-btn');
 
-    <!-- ===================================================================== -->
-    <!-- MODAL 3: Article Detail & Re-classification Modal -->
-    <!-- ===================================================================== -->
-    <div id="detail-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <span class="text-xs font-bold text-red-600 uppercase tracking-wider">기사 상세 정보 및 분류 수정</span>
-                <button onclick="closeModal('detail-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <div class="p-6 space-y-4">
-                <input type="hidden" id="detail-id">
-                <div class="flex items-center gap-2 text-xs text-slate-500">
-                    <span id="detail-date" class="font-semibold text-slate-700">2026-11-18</span>
-                    <span>•</span>
-                    <span id="detail-reporter" class="font-bold text-blue-600">김석진 기자</span>
-                </div>
-                <h3 id="detail-title" class="text-lg font-bold text-slate-900 leading-snug">기사 제목</h3>
-                <p id="detail-summary" class="text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 leading-relaxed">
-                    기사 요약 내용이 표시됩니다.
-                </p>
+            const startDate = document.getElementById('filter-date-start').value;
+            const endDate = document.getElementById('filter-date-end').value;
+            const keyword = document.getElementById('filter-keyword').value.trim();
 
-                <!-- Reclassification Controls -->
-                <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">주제 분야 변경</label>
-                        <select id="detail-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="시정·행정">시정·행정</option>
-                            <option value="교육">교육</option>
-                            <option value="경제·산업">경제·산업</option>
-                            <option value="도시·교통">도시·교통</option>
-                            <option value="사회·안전">사회·안전</option>
-                            <option value="문화·복지">문화·복지</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">자치구/출입처 변경</label>
-                        <select id="detail-district" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="부산시 전역">부산시 전역</option>
-                            <option value="부산시청">부산시청</option>
-                            <option value="부산시의회">부산시의회</option>
-                            <option value="부산시교육청">부산시교육청</option>
-                            <option value="강서구">강서구</option>
-                            <option value="남구">남구</option>
-                            <option value="수영구">수영구</option>
-                            <option value="동구">동구</option>
-                            <option value="해운대구">해운대구</option>
-                            <option value="서구·동구">서구·동구</option>
-                            <option value="사하구">사하구</option>
-                            <option value="사상구">사상구</option>
-                            <option value="북구">북구</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between pt-4">
-                    <a id="detail-link" href="https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:underline">
-                        <span>SK브로드밴드 뉴스에서 보기</span>
-                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                    </a>
-                    <div class="flex gap-2">
-                        <button onclick="deleteCurrentArticle()" class="px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50">삭제</button>
-                        <button onclick="saveDetailChanges()" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">분류 저장</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- JavaScript Application Logic -->
-    <script>
-        // =========================================================================
-        // 1. STATE & CONSTANTS
-        // =========================================================================
-        const STORAGE_KEY = 'skb_busan_news_articles_v2_real';
-        const DEFAULT_NEWSROOM_URL = 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm';
-
-        let allArticles = [];
-        let filteredArticles = [];
-
-        // Chart Instances
-        let trendChartInstance = null;
-        let reporterChartInstance = null;
-        let categoryChartInstance = null;
-        let districtChartInstance = null;
-
-        // Category Styling & Auto-Classification Keywords
-        const CATEGORY_CONFIG = {
-            '시정·행정': {
-                badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-                color: '#4f46e5',
-                keywords: ['부산시', '시의회', '구청', '행정', '조례', '예산', '정책', '국비', '공모', '박형준', '구청장', '인사', '협약', '개청', '신청사']
-            },
-            '교육': {
-                badge: 'bg-sky-50 text-sky-700 border-sky-200',
-                color: '#0284c7',
-                keywords: ['교육청', '학교', '학생', '교사', '수능', '돌봄', '늘봄', '대학', '입시', '교육감', '초등', '중학', '고교', '급식', '장학']
-            },
-            '경제·산업': {
-                badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                color: '#059669',
-                keywords: ['경제', '기업', '소상공인', '전통시장', '수출', '일자리', '취업', '창업', '산단', '공단', '조선', '해양', '금융', '투자', '물가', '관광', '유치']
-            },
-            '도시·교통': {
-                badge: 'bg-amber-50 text-amber-700 border-amber-200',
-                color: '#d97706',
-                keywords: ['도시철도', '지하철', '버스', '도로', '터널', '교량', '재개발', '재건축', '주차', '교통', '가덕도', '신공항', '북항', '철도', '트램', '공원']
-            },
-            '사회·안전': {
-                badge: 'bg-rose-50 text-rose-700 border-rose-200',
-                color: '#e11d48',
-                keywords: ['화재', '경찰', '소방', '사고', '안전', '태풍', '침수', '범죄', '단속', '점검', '재난', '피해', '검거', '예방', '폭염', '한파']
-            },
-            '문화·복지': {
-                badge: 'bg-purple-50 text-purple-700 border-purple-200',
-                color: '#9333ea',
-                keywords: ['축제', '문화', '복지', '어르신', '노인', '청년', '출산', '보육', '병원', '의료', '공연', '전시', '도서관', '체육', '불꽃', '영화제', '나눔']
+            // 1. 먼저 현재 보유 데이터로 즉시 필터링해 화면 반응성 확보
+            applyFilters();
+            const target = document.getElementById('analysis-results-section');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
+
+            // 2. 백그라운드에서 SK브로드밴드 부산 섹션(S1N7) 실시간 조회 시도
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-70');
+            }
+            if (statusBar) {
+                statusBar.classList.remove('hidden');
+                statusDot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+                statusText.textContent = 'SK브로드밴드 부산보도국(S1N7)에서 조건에 맞는 기사를 실시간 조회 중...';
+                fallbackBtn.classList.add('hidden');
+            }
+
+            try {
+                const fetched = await fetchBusanArticlesSilently({ startDate, endDate, keyword, maxPages: 4 });
+                if (fetched.length > 0) {
+                    const existingTitles = new Set(allArticles.map(a => a.title));
+                    const uniqueNew = fetched.filter(item => !existingTitles.has(item.title));
+                    if (uniqueNew.length > 0) {
+                        allArticles = [...uniqueNew, ...allArticles];
+                        saveArticlesToStorage();
+                        populateFilterOptions();
+                    }
+                    applyFilters();
+                    statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+                    statusText.textContent = `실시간 동기화 완료 · 신규 ${uniqueNew.length}건 추가 (필터 결과 총 ${filteredArticles.length}건)`;
+                    showToast(`조회 완료: 필터 조건에 맞는 기사 ${filteredArticles.length}건이 분석되었습니다.`, 'success');
+                } else {
+                    statusDot.className = 'w-2 h-2 rounded-full bg-blue-500';
+                    statusText.textContent = `보유 데이터 기준 ${filteredArticles.length}건 분석 완료 (더 많은 과거 기사가 필요하면 우측 수집기 이용)`;
+                    fallbackBtn.classList.remove('hidden');
+                    showToast(`설정하신 조건으로 ${filteredArticles.length}건의 기사를 분석했습니다.`, 'info');
+                }
+            } catch (err) {
+                statusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+                statusText.textContent = `보유 데이터 기준 ${filteredArticles.length}건 분석 완료 · 외부 실시간 연결이 제한되어 로컬 데이터로 분석했습니다.`;
+                fallbackBtn.classList.remove('hidden');
+                showToast(`보유 데이터에서 조건에 맞는 ${filteredArticles.length}건을 분석했습니다.`, 'info');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-70');
+                }
+            }
+        }
+
+        async function fetchBusanArticlesSilently({ startDate, endDate, keyword, maxPages = 4 }) {
+            const collected = [];
+            const seenIds = new Set();
+
+            for (let p = 1; p <= maxPages; p++) {
+                const params = new URLSearchParams({
+                    page: String(p),
+                    sc_section_code: 'S1N7',
+                    sc_order_by: 'E',
+                    view_type: 'sm'
+                });
+                if (keyword) {
+                    params.set('sc_area', 'A');
+                    params.set('sc_word', keyword);
+                }
+                if (startDate) params.set('sc_sdate', startDate);
+                if (endDate) params.set('sc_edate', endDate);
+
+                const targetUrl = `https://news.skbroadband.com/news/articleList.html?${params.toString()}`;
+                const html = await fetchWithCorsFallback(targetUrl);
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const links = doc.querySelectorAll('a[href*="articleView.html"]');
+
+                let pageAdded = 0;
+                links.forEach((a, idx) => {
+                    const title = a.textContent.trim();
+                    const href = a.getAttribute('href') || '';
+                    if (!title || title.length < 5) return;
+
+                    const idMatch = href.match(/idxno=(\d+)/);
+                    const id = idMatch ? idMatch[1] : `live_${p}_${idx}`;
+                    if (seenIds.has(id)) return;
+                    seenIds.add(id);
+
+                    const container = a.closest('li, tr, div') || a.parentElement;
+                    const blockText = container ? container.textContent : '';
+                    const repMatch = blockText.match(/([가-힣]{2,4})\s*(기자|국장|팀장)/);
+                    const dateMatch = blockText.match(/(20\d{2}[-./]\d{2}[-./]\d{2})/) || blockText.match(/(\d{2}-\d{2})\s+\d{2}:\d{2}/);
+
+                    let dateStr = getTodayStr();
+                    if (dateMatch) {
+                        const rawD = dateMatch[1].replace(/\./g, '-');
+                        dateStr = rawD.length === 5 ? `${new Date().getFullYear()}-${rawD}` : rawD;
+                    }
+
+                    const fullUrl = href.startsWith('http') ? href : `https://news.skbroadband.com${href.startsWith('/') ? '' : '/news/'}${href}`;
+                    collected.push({
+                        id,
+                        title,
+                        reporter: repMatch ? `${repMatch[1]} ${repMatch[2]}` : '부산보도국',
+                        date: dateStr,
+                        category: detectCategory(`${title} ${blockText}`),
+                        district: detectDistrict(`${title} ${blockText}`),
+                        summary: title,
+                        url: fullUrl
+                    });
+                    pageAdded++;
+                });
+
+                if (pageAdded === 0) break;
+                if (startDate && collected.some(item => item.date < startDate)) break;
+            }
+            return collected;
+        }
         };
 
         // District Detection Rules (Tailored to SK Broadband Busan Service Areas & Key Institutions)
@@ -2091,18 +2000,22 @@
         }
 
         function updateCollectorScript() {
-            const pages = parseInt(document.getElementById('crawl-page-count').value, 10) || 15;
+            const pages = parseInt(document.getElementById('crawl-page-count').value, 10) || 30;
             const scriptCode = `(async () => {
   const MAX_PAGES = ${pages};
   const results = [];
   const seen = new Set();
   const baseUrl = new URL(location.href);
-  if (!baseUrl.searchParams.get('sc_section_code')) {
+  if (!baseUrl.pathname.includes('articleList.html')) {
+    baseUrl.pathname = '/news/articleList.html';
+  }
+  if (!baseUrl.searchParams.get('sc_section_code') && !baseUrl.searchParams.get('sc_word')) {
     baseUrl.searchParams.set('sc_section_code', 'S1N7');
   }
+  baseUrl.searchParams.set('view_type', 'sm');
   const banner = document.createElement('div');
   banner.style.cssText = 'position:fixed;top:16px;right:16px;z-index:999999;background:#0f172a;color:#fff;padding:14px 18px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:0 10px 25px rgba(0,0,0,.3);border-left:4px solid #ea002c;';
-  banner.textContent = '🚀 부산보도국 기사 수집 준비 중...';
+  banner.textContent = '🚀 부산 섹션 전체 기사 수집 시작...';
   document.body.appendChild(banner);
   for (let p = 1; p <= MAX_PAGES; p++) {
     baseUrl.searchParams.set('page', p);
@@ -2136,9 +2049,9 @@
       });
       added++;
     });
-    banner.textContent = \`📡 수집 진행 중: \${p}/\${MAX_PAGES}페이지 (누적 \${results.length}건)\`;
+    banner.textContent = \`📡 수집 중: \${p}페이지 완료 (누적 \${results.length}건)\`;
     if (added === 0) break;
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 150));
   }
   const jsonOut = JSON.stringify(results);
   let sentToApp = false;
@@ -2151,15 +2064,12 @@
   try { await navigator.clipboard.writeText(jsonOut); } catch (e) {}
   banner.style.borderLeftColor = '#10b981';
   banner.textContent = sentToApp
-    ? \`✅ 총 \${results.length}건 수집 완료! 분석 대시보드로 자동 전송되었습니다.\`
+    ? \`✅ 총 \${results.length}건 수집 완료! 대시보드로 자동 전송되었습니다.\`
     : \`✅ 총 \${results.length}건 수집 완료! 클립보드에 복사되었습니다.\`;
   setTimeout(() => banner.remove(), 5000);
 })();`;
             document.getElementById('collector-script-box').value = scriptCode;
-            const bmLink = document.getElementById('bookmarklet-link');
-            if (bmLink) {
-                bmLink.href = 'javascript:' + encodeURIComponent(scriptCode.replace(/\s+/g, ' '));
-            }
+        }
         }
 
         function openNewsroomForCollection() {
