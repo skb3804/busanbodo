@@ -98,6 +98,10 @@
                         <input type="checkbox" id="dedupe-mode" checked class="rounded text-red-600 focus:ring-red-500">
                         <span>중복 기사 제외</span>
                     </label>
+                    <button type="button" onclick="clearAllStoredArticles()" class="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg text-xs font-semibold text-slate-600 bg-white border border-slate-300 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all cursor-pointer" title="기존 목록을 모두 비우고 새 파일만 분석">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <span>목록 비우기</span>
+                    </button>
                     <button type="button" id="btn-apply-files" onclick="applyQueuedFiles()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold text-white sk-gradient hover:opacity-95 active:scale-[0.98] shadow-sm transition-all cursor-pointer">
                         <i data-lucide="check" class="w-3.5 h-3.5"></i>
                         <span>적용</span>
@@ -353,15 +357,15 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                                <th class="py-3.5 px-4 w-28">보도일</th>
-                                <th class="py-3.5 px-4 w-28">분야</th>
-                                <th class="py-3.5 px-4 w-32">지역/출입처</th>
-                                <th class="py-3.5 px-4">기사 제목 및 핵심 요약</th>
-                                <th class="py-3.5 px-4 w-28">취재기자</th>
-                                <th class="py-3.5 px-4 w-20 text-center">관리</th>
-                            </tr>
-                        </thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                            <th class="py-3.5 px-4 w-28">보도일</th>
+                            <th class="py-3.5 px-4 w-28">분야</th>
+                            <th class="py-3.5 px-4 w-32">지역/출입처</th>
+                            <th class="py-3.5 px-4">기사 제목</th>
+                            <th class="py-3.5 px-4 w-28">취재기자</th>
+                            <th class="py-3.5 px-4 w-20 text-center">관리</th>
+                        </tr>
+                    </thead>
                         <tbody id="article-table-body" class="divide-y divide-slate-100 text-sm">
                             <!-- Dynamic Rows -->
                         </tbody>
@@ -757,53 +761,140 @@
             return '';
         }
 
+        function extractReporterFromRow(row) {
+            // 1. 우선 '기자' 관련 컬럼 헤더에서 추출 (공백 제거 후 비교)
+            const byHeader = pickColumnValue(row, [
+                '기자', '취재기자', '기자명', '담당기자', '작성자', '기자탭', '기자별', '담당', '바이라인', 'reporter', 'author', 'byline'
+            ]);
+            if (byHeader) {
+                const compact = byHeader.replace(/\s+/g, '');
+                const matchedHeader = MAIN_REPORTERS.find(r => compact.includes(r));
+                return matchedHeader || '기타';
+            }
+
+            // 2. 헤더명이 비표준(__EMPTY 등)이더라도 셀 값(공백 제거)에 4명 기자 이름이 포함되면 추출
+            for (const val of Object.values(row)) {
+                const rawCell = String(val ?? '').trim();
+                const compactCell = rawCell.replace(/\s+/g, '');
+                if (!compactCell || compactCell.length > 15) continue;
+                const matched = MAIN_REPORTERS.find(r =>
+                    compactCell === r ||
+                    compactCell === `${r}기자` ||
+                    compactCell === `[${r}]` ||
+                    compactCell === `(${r})` ||
+                    compactCell.startsWith(r)
+                );
+                if (matched) return matched;
+            }
+
+            // 3. 다른 셀 값에 'OOO 기자' 패턴이 있는 경우 기타로 분류
+            for (const val of Object.values(row)) {
+                const compactCell = String(val ?? '').replace(/\s+/g, '');
+                if (/^[가-힣]{2,4}(기자|국장|팀장|부장|특파원)$/.test(compactCell)) {
+                    return '기타';
+                }
+            }
+
+            return '';
+        }
+
         function parseExcelBufferToArticles(arrayBuffer, fileIdx) {
             if (typeof XLSX === 'undefined') {
                 throw new Error('엑셀 파서 라이브러리가 로드되지 않았습니다.');
             }
             const data = new Uint8Array(arrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
             const parsed = [];
-            rows.forEach((row, idx) => {
-                let title = pickColumnValue(row, ['기사제목', '제목', 'title', 'headline', '기사명', '내용']);
-                if (!title) {
-                    const vals = Object.values(row).map(v => String(v).trim()).filter(v => v.length >= 6 && !/^https?:\/\//.test(v));
-                    vals.sort((a, b) => b.length - a.length);
-                    title = vals[0] || '';
+
+            // 모든 시트 순회 (시트 이름이 기자명인 경우에도 자동 활용)
+            workbook.SheetNames.forEach((sheetName, sIdx) => {
+                const worksheet = workbook.Sheets[sheetName];
+                const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                if (!matrix || matrix.length === 0) return;
+
+                // 헤더 행 자동 탐지 (상위 10행 중 '제목' 또는 '기자' 키워드가 있는 행)
+                let headerRowIdx = 0;
+                for (let r = 0; r < Math.min(10, matrix.length); r++) {
+                    const rowStr = (matrix[r] || []).map(c => String(c).replace(/\s+/g, '')).join(' ');
+                    if (/(기사제목|제목|기자|취재기자|작성자|보도일|날짜)/.test(rowStr)) {
+                        headerRowIdx = r;
+                        break;
+                    }
                 }
-                if (!title || title.length < 2) return;
 
-                const rawReporter = pickColumnValue(row, ['취재기자', '기자', '기자명', '작성자', 'reporter', 'author', 'byline']);
-                const reporter = rawReporter ? formatReporterLabel(rawReporter) : '부산보도국';
+                const rows = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIdx, defval: '' });
+                const compactSheetName = sheetName.replace(/\s+/g, '');
+                const sheetReporter = MAIN_REPORTERS.find(r => compactSheetName.includes(r)) || '';
 
-                const rawDate = row['보도일'] ?? row['날짜'] ?? row['출고일'] ?? row['작성일'] ?? row['등록일'] ?? row['date'] ?? pickColumnValue(row, ['보도일', '날짜', '출고일', '작성일', '일자', 'date']);
-                const date = normalizeExcelDate(rawDate);
+                // 병합 셀 대응: 위 행의 기자명과 날짜를 아래 빈 행으로 이어받기 (Forward-fill)
+                let lastKnownReporter = sheetReporter;
+                let lastKnownDate = '';
 
-                const summary = pickColumnValue(row, ['요약', '리드문', '본문', '부제', 'summary', 'description']) || title;
-                const rawCategory = pickColumnValue(row, ['분야', '주제', '카테고리', '분류', '섹션', 'category']);
-                const rawDistrict = pickColumnValue(row, ['지역', '자치구', '출입처', '권역', '구군', 'district', 'region']);
-                const rawUrl = pickColumnValue(row, ['링크', 'url', '주소', '기사링크', '원문']);
-                const rawId = pickColumnValue(row, ['번호', '기사번호', 'id', 'idxno']);
+                rows.forEach((row, idx) => {
+                    // 행 전체 텍스트에서 상단 구분 헤더(예: "■ 김석진 기자") 감지
+                    const rowValues = Object.values(row).map(v => String(v ?? '').trim()).filter(Boolean);
+                    if (rowValues.length === 1) {
+                        const singleCompact = rowValues[0].replace(/\s+/g, '');
+                        const sectionRep = MAIN_REPORTERS.find(r => singleCompact.includes(r) && singleCompact.length <= 12);
+                        if (sectionRep) {
+                            lastKnownReporter = sectionRep;
+                            return;
+                        }
+                    }
 
-                const validCategories = Object.keys(CATEGORY_CONFIG);
-                const category = validCategories.includes(rawCategory)
-                    ? rawCategory
-                    : detectCategory(`${title} ${summary} ${rawCategory}`);
-                const district = rawDistrict || detectDistrict(`${title} ${summary}`);
+                    let title = pickColumnValue(row, ['기사제목', '제목', 'title', 'headline', '기사명', '내용']);
+                    if (!title) {
+                        const vals = rowValues
+                            .filter(v => v.length >= 6 && !/^https?:\/\//.test(v) && !MAIN_REPORTERS.includes(v.replace(/\s+/g, '')));
+                        vals.sort((a, b) => b.length - a.length);
+                        title = vals[0] || '';
+                    }
+                    if (!title || title.length < 2 || /^(기사제목|제목)$/.test(title.replace(/\s+/g, ''))) return;
 
-                parsed.push({
-                    id: rawId || `xls_${Date.now()}_${fileIdx}_${idx}`,
-                    title,
-                    reporter,
-                    date,
-                    category,
-                    district,
-                    summary,
-                    url: rawUrl || DEFAULT_NEWSROOM_URL
+                    let extractedRep = extractReporterFromRow(row);
+                    if (extractedRep) {
+                        lastKnownReporter = extractedRep;
+                    } else if (lastKnownReporter) {
+                        extractedRep = lastKnownReporter;
+                    } else {
+                        // 제목 끝이나 괄호 안에 기자명이 붙어있는 경우 확인 (예: "... / 김석진 기자")
+                        const titleCompact = title.replace(/\s+/g, '');
+                        const inTitle = MAIN_REPORTERS.find(r => titleCompact.endsWith(r) || titleCompact.endsWith(`${r}기자`));
+                        extractedRep = inTitle || '기타';
+                    }
+                    const reporter = formatReporterLabel(extractedRep);
+
+                    const rawDate = row['보도일'] ?? row['날짜'] ?? row['출고일'] ?? row['작성일'] ?? row['등록일'] ?? row['date'] ?? pickColumnValue(row, ['보도일', '날짜', '출고일', '작성일', '일자', 'date']);
+                    let date = '';
+                    if (rawDate !== undefined && String(rawDate).trim() !== '') {
+                        date = normalizeExcelDate(rawDate);
+                        lastKnownDate = date;
+                    } else {
+                        date = lastKnownDate || getTodayStr();
+                    }
+
+                    const summary = pickColumnValue(row, ['요약', '리드문', '본문', '부제', 'summary', 'description']) || title;
+                    const rawCategory = pickColumnValue(row, ['분야', '주제', '카테고리', '분류', '섹션', 'category']);
+                    const rawDistrict = pickColumnValue(row, ['지역', '자치구', '출입처', '권역', '구군', 'district', 'region']);
+                    const rawUrl = pickColumnValue(row, ['링크', 'url', '주소', '기사링크', '원문']);
+                    const rawId = pickColumnValue(row, ['번호', '기사번호', 'id', 'idxno']);
+
+                    const validCategories = Object.keys(CATEGORY_CONFIG);
+                    const category = validCategories.includes(rawCategory)
+                        ? rawCategory
+                        : detectCategory(`${title} ${summary} ${rawCategory}`);
+                    const district = rawDistrict || detectDistrict(`${title} ${summary}`);
+
+                    parsed.push({
+                        id: rawId || `xls_${Date.now()}_${fileIdx}_${sIdx}_${idx}`,
+                        title,
+                        reporter,
+                        date,
+                        category,
+                        district,
+                        summary,
+                        url: rawUrl || DEFAULT_NEWSROOM_URL
+                    });
                 });
             });
             return parsed;
@@ -838,32 +929,54 @@
 
             const parsed = [];
             const dateRegex = /(20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2})/;
-            const reporterRegex = /([가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/;
+            const mainRepRegex = /(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한)/;
+            const anyRepRegex = /([가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/;
+            const compactFileName = fileName.replace(/\s+/g, '');
+            let stickyPdfReporter = MAIN_REPORTERS.find(r => compactFileName.includes(r)) || '';
+
+            const findMainRep = (text) => {
+                if (!text) return '';
+                const m = text.match(mainRepRegex);
+                return m ? m[1].replace(/\s+/g, '') : '';
+            };
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
-                if (line.length < 8) continue;
+                if (line.length < 2) continue;
                 if (/^(전체|기사목록|제목형|요약형|포토형|유튜브|상세검색|더보기|최신기사|많이 본 기사|Copyright|SK브로드밴드)/i.test(line)) continue;
 
-                const repMatch = line.match(reporterRegex);
-                const dateMatch = line.match(dateRegex);
-                const nextLine = lines[i + 1] || '';
-                const nextRep = nextLine.match(reporterRegex);
-                const nextDate = nextLine.match(dateRegex);
+                // 단독 기자 섹션 헤더 줄 감지 (예: "김석진 기자" 또는 "김석진")
+                const standaloneRep = findMainRep(line);
+                if (standaloneRep && line.replace(/\s+/g, '').length <= 10) {
+                    stickyPdfReporter = standaloneRep;
+                    continue;
+                }
 
-                if (repMatch || dateMatch || nextRep || nextDate) {
+                if (line.length < 8) continue;
+
+                const prev1 = lines[i - 1] || '';
+                const prev2 = lines[i - 2] || '';
+                const next1 = lines[i + 1] || '';
+                const next2 = lines[i + 2] || '';
+
+                const repInLine = findMainRep(line);
+                const repNearby = findMainRep(next1) || findMainRep(prev1) || findMainRep(next2) || findMainRep(prev2);
+                const anyRep = line.match(anyRepRegex) || next1.match(anyRepRegex) || prev1.match(anyRepRegex);
+                const dateMatch = line.match(dateRegex) || next1.match(dateRegex) || prev1.match(dateRegex);
+
+                if (repInLine || repNearby || anyRep || dateMatch) {
                     let title = line
                         .replace(dateRegex, '')
-                        .replace(reporterRegex, '')
+                        .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한|[가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/g, '')
+                        .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한)/g, '')
                         .replace(/\d{2}:\d{2}/g, '')
                         .trim();
 
                     if (title.length < 6) continue;
 
-                    const reporter = repMatch
-                        ? `${repMatch[1]} ${repMatch[2]}`
-                        : (nextRep ? `${nextRep[1]} ${nextRep[2]}` : '부산보도국');
-                    const rawDate = dateMatch ? dateMatch[1] : (nextDate ? nextDate[1] : getTodayStr());
+                    const resolvedRep = repInLine || repNearby || stickyPdfReporter || (anyRep ? '기타' : '기타');
+                    const reporter = formatReporterLabel(resolvedRep);
+                    const rawDate = dateMatch ? dateMatch[1] : getTodayStr();
                     const date = normalizeExcelDate(rawDate);
 
                     parsed.push({
@@ -876,21 +989,16 @@
                         summary: `${fileName}에서 추출된 기사`,
                         url: DEFAULT_NEWSROOM_URL
                     });
-
-                    if (!repMatch && !dateMatch && (nextRep || nextDate)) {
-                        i++;
-                    }
                 }
             }
 
-            // Fallback: if PDF is a single report/script without list metadata, treat non-header paragraphs as items
             if (parsed.length === 0) {
                 lines.filter(l => l.length >= 12 && l.length <= 120).slice(0, 50).forEach((l, idx) => {
-                    const repMatch = l.match(reporterRegex);
+                    const matched = findMainRep(l) || stickyPdfReporter || '기타';
                     parsed.push({
                         id: `pdf_line_${Date.now()}_${fileIdx}_${idx}`,
                         title: l,
-                        reporter: repMatch ? `${repMatch[1]} ${repMatch[2]}` : '부산보도국',
+                        reporter: formatReporterLabel(matched),
                         date: getTodayStr(),
                         category: detectCategory(l),
                         district: detectDistrict(l),
@@ -1275,15 +1383,13 @@
             }
         }
 
-        // =========================================================================
-        // 5. STORAGE & SINGLE ARTICLE ADD
-        // =========================================================================
-        function saveArticlesToStorage() {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(allArticles));
-            } catch (e) {
-                console.error('Storage save error:', e);
-            }
+        function clearAllStoredArticles() {
+            allArticles = [];
+            saveArticlesToStorage();
+            populateFilterOptions();
+            resetFilters();
+            showToast('기존 기사 목록을 모두 비웠습니다. 새 파일을 끌어다 놓고 [적용]을 눌러주세요.', 'info');
+        }
         }
 
         function loadArticlesFromStorage() {
@@ -1342,7 +1448,7 @@
         // 6. FILTERING, SORTING & APPLY BUTTON ACTION
         // =========================================================================
         function normalizeReporterGroup(name) {
-            const clean = String(name || '').trim();
+            const clean = String(name || '').replace(/\s+/g, '');
             const found = MAIN_REPORTERS.find(r => clean.includes(r));
             return found || '기타';
         }
@@ -1769,9 +1875,6 @@
                         <td class="py-3.5 px-4">
                             <div class="font-bold text-slate-900 group-hover:text-red-600 transition-colors line-clamp-1">
                                 ${escapeHtml(art.title)}
-                            </div>
-                            <div class="text-xs text-slate-500 line-clamp-1 mt-0.5">
-                                ${escapeHtml(art.summary)}
                             </div>
                         </td>
                         <td class="py-3.5 px-4 whitespace-nowrap">
