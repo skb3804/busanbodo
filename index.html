@@ -279,63 +279,10 @@
                 </div>
             </section>
 
-            <!-- Charts Grid (Row 2: Format, Category, District) -->
-            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Article Format Chart -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 class="text-base font-bold text-slate-900">기사 형식별 출고 비중</h3>
-                            <p class="text-xs text-slate-500">단신·리포트·포토뉴스·WEB·대담·출연 분포</p>
-                        </div>
-                        <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
-                    </div>
-                    <div class="relative flex-1 min-h-[230px] w-full flex items-center justify-center">
-                        <canvas id="formatChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Category Doughnut Chart -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
-                    <div class="mb-4">
-                        <h3 class="text-base font-bold text-slate-900">주제·분야별 보도 비중</h3>
-                        <p class="text-xs text-slate-500">키워드 자동 분류 및 엑셀 분야 분포</p>
-                    </div>
-                    <div class="relative flex-1 min-h-[230px] w-full flex items-center justify-center">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- District / Beat Bar Chart -->
-                <div class="md:col-span-2 lg:col-span-1 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
-                    <div class="mb-4">
-                        <h3 class="text-base font-bold text-slate-900">자치구·출입처별 분포</h3>
-                        <p class="text-xs text-slate-500">SK브로드밴드 부산 권역 및 주요 기관</p>
-                    </div>
-                    <div class="relative flex-1 min-h-[230px] w-full">
-                        <canvas id="districtChart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Top Keywords Analysis Strip -->
-            <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="hash" class="w-4 h-4 text-red-500"></i>
-                        <h3 class="text-base font-bold text-slate-900">핵심 이슈 키워드 TOP 12</h3>
-                        <span class="text-xs text-slate-500">기사 제목 어절 빈도 분석 (클릭 시 검색)</span>
-                    </div>
-                </div>
-                <div id="keyword-cloud" class="flex flex-wrap content-start gap-2 pt-1">
-                    <!-- Dynamic Keyword Pills -->
-                </div>
-            </section>
-
-            <!-- Charts Grid (Row 1: Trend & Reporter) -->
-            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Period Trend Chart (2/3 width) -->
-                <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+            <!-- Charts Grid (Trend, Reporter, Format) -->
+            <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Period Trend Chart (5/12 width) -->
+                <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h3 class="text-base font-bold text-slate-900">기간별 기사 출고 추이</h3>
@@ -348,8 +295,8 @@
                     </div>
                 </div>
 
-                <!-- Reporter Breakdown Chart (1/3 width) -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                <!-- Reporter Breakdown Chart (4/12 width) -->
+                <div class="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h3 class="text-base font-bold text-slate-900">기자별 출고 현황</h3>
@@ -361,43 +308,18 @@
                         <canvas id="reporterChart"></canvas>
                     </div>
                 </div>
-            </section>
 
-            <!-- Charts Grid (Row 2: Category, District, Top Keywords) -->
-            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Category Doughnut Chart -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
-                    <div class="mb-4">
-                        <h3 class="text-base font-bold text-slate-900">주제·분야별 보도 비중</h3>
-                        <p class="text-xs text-slate-500">키워드 자동 분류 및 엑셀 분야 분포</p>
-                    </div>
-                    <div class="relative flex-1 min-h-[230px] w-full flex items-center justify-center">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- District / Beat Bar Chart -->
-                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
-                    <div class="mb-4">
-                        <h3 class="text-base font-bold text-slate-900">자치구·출입처별 분포</h3>
-                        <p class="text-xs text-slate-500">SK브로드밴드 부산 권역 및 주요 기관</p>
-                    </div>
-                    <div class="relative flex-1 min-h-[230px] w-full">
-                        <canvas id="districtChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Top Keywords Analysis -->
-                <div class="md:col-span-2 lg:col-span-1 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
-                    <div class="flex items-center justify-between mb-3">
+                <!-- Article Format Chart (3/12 width) -->
+                <div class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
                         <div>
-                            <h3 class="text-base font-bold text-slate-900">핵심 이슈 키워드 TOP 12</h3>
-                            <p class="text-xs text-slate-500">기사 제목 어절 빈도 분석 (클릭 검색)</p>
+                            <h3 class="text-base font-bold text-slate-900">기사 형식별 출고 비중</h3>
+                            <p class="text-xs text-slate-500">단신·리포트·포토뉴스·WEB·대담·출연</p>
                         </div>
-                        <i data-lucide="hash" class="w-4 h-4 text-red-500"></i>
+                        <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
                     </div>
-                    <div id="keyword-cloud" class="flex-1 flex flex-wrap content-start gap-2 pt-1">
-                        <!-- Dynamic Keyword Pills -->
+                    <div class="relative flex-1 min-h-[250px] w-full flex items-center justify-center">
+                        <canvas id="formatChart"></canvas>
                     </div>
                 </div>
             </section>
@@ -675,8 +597,6 @@
         let trendChartInstance = null;
         let reporterChartInstance = null;
         let formatChartInstance = null;
-        let categoryChartInstance = null;
-        let districtChartInstance = null;
 
         // Category Styling & Auto-Classification Keywords
         const CATEGORY_CONFIG = {
@@ -739,13 +659,6 @@
             { name: '중구', keys: ['중구', '남포동', '자갈치', '광복동'] },
             { name: '영도구', keys: ['영도구', '영도', '태종대'] }
         ];
-
-        // Korean Stopwords for Keyword Frequency Analysis
-        const STOPWORDS = new Set([
-            '부산', '부산시', '기자', '오늘', '내일', '올해', '내년', '추진', '본격', '개최', '마련',
-            '지원', '확대', '강화', '위해', '통해', '대한', '관련', '실시', '운영', '진행', '방안',
-            '대책', '현장', '지역', '주민', '시민', '사업', '계획', '예정', '시작', '완료', '달성', '주간'
-        ]);
 
         // =========================================================================
         // 2. MULTI-FILE (PDF & EXCEL) UPLOAD & PARSING ENGINE
@@ -1732,56 +1645,6 @@
             });
         }
 
-        function renderKeywordCloud() {
-            const container = document.getElementById('keyword-cloud');
-            if (filteredArticles.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400">표시할 키워드가 없습니다.</p>';
-                return;
-            }
-
-            const freq = {};
-            filteredArticles.forEach(art => {
-                const combinedText = `${art.title} ${art.summary}`;
-                const words = combinedText
-                    .replace(/[^\uAC00-\uD7A3a-zA-Z0-9\s]/g, ' ')
-                    .split(/\s+/)
-                    .map(w => w.replace(/(은|는|이|가|을|를|의|에|서|로|으로|와|과|도|만|까지|에서|부터)$/, ''))
-                    .filter(w => w.length >= 2 && !STOPWORDS.has(w) && !/^\d+$/.test(w));
-
-                new Set(words).forEach(w => {
-                    freq[w] = (freq[w] || 0) + 1;
-                });
-            });
-
-            const topKeywords = Object.entries(freq)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 12);
-
-            if (topKeywords.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400">추출된 핵심 키워드가 없습니다.</p>';
-                return;
-            }
-
-            container.innerHTML = topKeywords.map(([word, count], idx) => {
-                const isTop3 = idx < 3;
-                const styleClass = isTop3
-                    ? 'bg-red-50 text-red-700 border-red-200 font-bold text-sm px-3 py-1.5'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 font-medium text-xs px-2.5 py-1';
-                return `
-                    <button onclick="quickSearchKeyword('${word}')" class="inline-flex items-center gap-1.5 rounded-full border hover:border-red-400 hover:bg-red-50/70 transition-all cursor-pointer ${styleClass}">
-                        <span>#${word}</span>
-                        <span class="text-[11px] opacity-75">(${count})</span>
-                    </button>
-                `;
-            }).join('');
-        }
-
-        function quickSearchKeyword(word) {
-            const input = document.getElementById('filter-keyword');
-            input.value = (input.value === word) ? '' : word;
-            applyFilters();
-        }
-
         function renderArticleTable() {
             const tbody = document.getElementById('article-table-body');
             const emptyState = document.getElementById('empty-state');
@@ -2006,7 +1869,6 @@
         function updateDashboardUI() {
             updateKPIs();
             renderCharts();
-            renderKeywordCloud();
             renderArticleTable();
         }
 
@@ -2157,74 +2019,7 @@
                         }
                     },
                     plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
-                    }
-                }
-            });
-
-            if (categoryChartInstance) categoryChartInstance.destroy();
-            categoryChartInstance = new Chart(document.getElementById('categoryChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: sortedCats.map(c => c[0]),
-                    datasets: [{
-                        data: sortedCats.map(c => c[1]),
-                        backgroundColor: catColors,
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '62%',
-                    onClick: (e, elements) => {
-                        if (elements.length > 0) {
-                            const idx = elements[0].index;
-                            const clickedCat = sortedCats[idx][0];
-                            const catSelect = document.getElementById('filter-category');
-                            catSelect.value = (catSelect.value === clickedCat) ? 'ALL' : clickedCat;
-                            applyFilters();
-                        }
-                    },
-                    plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
-                    }
-                }
-            });
-
-            const distCounts = countBy(filteredArticles, 'district');
-            const sortedDists = Object.entries(distCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-
-            if (districtChartInstance) districtChartInstance.destroy();
-            districtChartInstance = new Chart(document.getElementById('districtChart'), {
-                type: 'bar',
-                data: {
-                    labels: sortedDists.map(d => d[0]),
-                    datasets: [{
-                        label: '보도 건수',
-                        data: sortedDists.map(d => d[1]),
-                        backgroundColor: '#0284c7',
-                        borderRadius: 6,
-                        barThickness: 20
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onClick: (e, elements) => {
-                        if (elements.length > 0) {
-                            const idx = elements[0].index;
-                            const clickedDist = sortedDists[idx][0];
-                            const distSelect = document.getElementById('filter-district');
-                            distSelect.value = (distSelect.value === clickedDist) ? 'ALL' : clickedDist;
-                            applyFilters();
-                        }
-                    },
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#f1f5f9' } },
-                        x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } }
                     }
                 }
             });
