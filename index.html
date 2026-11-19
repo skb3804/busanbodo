@@ -58,6 +58,11 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">B tv 부산뉴스</span>
+                            <span id="uploaded-file-badge" class="text-xs text-slate-500 font-medium">기본 샘플 데이터 (20건)</span>
+                        </div>
+                        <h1 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">SK브로드밴드 부산보도국 기사 분석 대시보드</h1>
+                    </div>
+                </div>
                 <!-- Action Buttons -->
                 <div class="flex flex-wrap items-center gap-2">
                     <button type="button" onclick="downloadExcelTemplate()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer" title="업로드용 표준 엑셀 양식 다운로드">
@@ -89,8 +94,8 @@
                         <i data-lucide="upload-cloud" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <p class="text-sm font-bold text-slate-800">부산보도국 기사 리스트 <span class="text-red-600">pdf 또는 엑셀 자료</span>를 이곳에 끌어다 놓거나 클릭하여 추가하세요</p>
-                        <p class="text-xs text-slate-500 mt-0.5">여러 개 파일(.pdf, .xlsx, .xls, .csv)을 동시에 담은 뒤 우측 <span class="font-semibold text-slate-700">[적용]</span> 버튼을 누르면 일괄 분석됩니다.</p>
+                        <p class="text-sm font-bold text-slate-800"><span class="text-red-600">백데이터(pdf 또는 엑셀자료)</span>를 이곳에 끌어다 놓거나 클릭하여 추가하세요 <span class="text-xs font-medium text-slate-500">(로딩시간이 길수도 있습니다)</span></p>
+                        <p class="text-xs text-slate-500 mt-0.5">여러 개 파일(.pdf, .xlsx, .xls, .csv)을 동시에 담은 뒤 우측 <span class="font-semibold text-slate-700">[적용]</span> 버튼을 누르면 단신·리포트·포토뉴스·WEB 등 형식까지 일괄 분석됩니다.</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation()">
@@ -159,6 +164,19 @@
                         <option value="ALL">전체 기자</option>
                     </select>
                 </div>
+                <!-- Format Filter -->
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">기사 형식</label>
+                    <select id="filter-format" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                        <option value="ALL">전체 형식</option>
+                        <option value="단신">단신</option>
+                        <option value="리포트">리포트</option>
+                        <option value="포토뉴스">포토뉴스</option>
+                        <option value="WEB">WEB</option>
+                        <option value="ST대담">ST대담</option>
+                        <option value="출연">출연</option>
+                    </select>
+                </div>
                 <!-- Category Filter -->
                 <div class="lg:col-span-2">
                     <label class="block text-xs font-semibold text-slate-500 mb-1">분야 / 주제별</label>
@@ -181,11 +199,11 @@
                     </select>
                 </div>
                 <!-- Keyword Search -->
-                <div class="lg:col-span-2">
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">키워드 검색</label>
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">키워드</label>
                     <div class="relative">
-                        <input type="text" id="filter-keyword" onkeydown="if(event.key==='Enter') handleApplyButtonClick()" placeholder="제목, 키워드..." class="w-full rounded-lg border border-slate-300 pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
-                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5"></i>
+                        <input type="text" id="filter-keyword" onkeydown="if(event.key==='Enter') handleApplyButtonClick()" placeholder="제목..." class="w-full rounded-lg border border-slate-300 pl-7 pr-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-3"></i>
                     </div>
                 </div>
                 <!-- Apply Button (End of Row) -->
@@ -208,27 +226,27 @@
                         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">총 분석 기사 수</p>
                         <div class="mt-2 flex items-baseline gap-2">
                             <h3 id="kpi-total" class="text-3xl font-extrabold text-slate-900">0</h3>
-                            <span class="text-sm font-medium text-slate-500">건</span>
+                            <span class="text-xs font-medium text-slate-500">건</span>
                         </div>
-                        <p id="kpi-total-sub" class="mt-1 text-xs text-slate-500">전체 데이터 대비 100%</p>
+                        <p id="kpi-total-sub" class="text-xs text-slate-400 mt-1">전체 0건 중 0% 표시</p>
                     </div>
-                    <div class="p-3 rounded-xl bg-red-50 text-red-600">
-                        <i data-lucide="newspaper" class="w-6 h-6"></i>
+                    <div class="p-2.5 rounded-xl bg-red-50 text-red-600">
+                        <i data-lucide="newspaper" class="w-5 h-5"></i>
                     </div>
                 </div>
 
-                <!-- Participating Reporters -->
+                <!-- Active Reporters -->
                 <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-start justify-between">
                     <div>
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">참여 취재기자 수</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">참여 기자 수</p>
                         <div class="mt-2 flex items-baseline gap-2">
                             <h3 id="kpi-reporter-count" class="text-3xl font-extrabold text-slate-900">0</h3>
-                            <span class="text-sm font-medium text-slate-500">명</span>
+                            <span class="text-xs font-medium text-slate-500">명</span>
                         </div>
-                        <p id="kpi-top-reporter-info" class="mt-1 text-xs text-blue-600 font-medium">최다 출고: -</p>
+                        <p id="kpi-top-reporter-info" class="text-xs text-slate-500 mt-1 font-medium">최다 출고: -</p>
                     </div>
-                    <div class="p-3 rounded-xl bg-blue-50 text-blue-600">
-                        <i data-lucide="users" class="w-6 h-6"></i>
+                    <div class="p-2.5 rounded-xl bg-blue-50 text-blue-600">
+                        <i data-lucide="user-check" class="w-5 h-5"></i>
                     </div>
                 </div>
 
@@ -236,28 +254,81 @@
                 <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-start justify-between">
                     <div>
                         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">최다 보도 분야</p>
-                        <div class="mt-2 flex items-baseline gap-2">
-                            <h3 id="kpi-top-category" class="text-2xl font-extrabold text-slate-900">-</h3>
+                        <div class="mt-2">
+                            <h3 id="kpi-top-category" class="text-xl font-extrabold text-slate-900 truncate">-</h3>
                         </div>
-                        <p id="kpi-daily-avg-info" class="mt-1 text-xs text-slate-500">일평균 0.0건 출고</p>
+                        <p id="kpi-daily-avg-info" class="text-xs text-slate-500 mt-1.5 font-medium">일평균 0.0건 출고</p>
                     </div>
-                    <div class="p-3 rounded-xl bg-orange-50 text-orange-600">
-                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    <div class="p-2.5 rounded-xl bg-orange-50 text-orange-600">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
                     </div>
                 </div>
 
-                <!-- Top Focus Area / District -->
+                <!-- Top District & Date Span -->
                 <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-start justify-between">
                     <div>
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">집중 취재 권역/자치구</p>
-                        <div class="mt-2 flex items-baseline gap-2">
-                            <h3 id="kpi-top-district" class="text-2xl font-extrabold text-slate-900">-</h3>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">주요 출입처 · 기간</p>
+                        <div class="mt-2">
+                            <h3 id="kpi-top-district" class="text-xl font-extrabold text-slate-900 truncate">-</h3>
                         </div>
-                        <p id="kpi-date-span" class="mt-1 text-xs text-emerald-600 font-medium">수집 기간 기준</p>
+                        <p id="kpi-date-span" class="text-xs text-slate-400 mt-1.5 font-mono">-</p>
                     </div>
-                    <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600">
-                        <i data-lucide="map-pin" class="w-6 h-6"></i>
+                    <div class="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+                        <i data-lucide="map-pin" class="w-5 h-5"></i>
                     </div>
+                </div>
+            </section>
+
+            <!-- Charts Grid (Row 2: Format, Category, District) -->
+            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Article Format Chart -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">기사 형식별 출고 비중</h3>
+                            <p class="text-xs text-slate-500">단신·리포트·포토뉴스·WEB·대담·출연 분포</p>
+                        </div>
+                        <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                    </div>
+                    <div class="relative flex-1 min-h-[230px] w-full flex items-center justify-center">
+                        <canvas id="formatChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Category Doughnut Chart -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-base font-bold text-slate-900">주제·분야별 보도 비중</h3>
+                        <p class="text-xs text-slate-500">키워드 자동 분류 및 엑셀 분야 분포</p>
+                    </div>
+                    <div class="relative flex-1 min-h-[230px] w-full flex items-center justify-center">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- District / Beat Bar Chart -->
+                <div class="md:col-span-2 lg:col-span-1 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-base font-bold text-slate-900">자치구·출입처별 분포</h3>
+                        <p class="text-xs text-slate-500">SK브로드밴드 부산 권역 및 주요 기관</p>
+                    </div>
+                    <div class="relative flex-1 min-h-[230px] w-full">
+                        <canvas id="districtChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Keywords Analysis Strip -->
+            <section class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="hash" class="w-4 h-4 text-red-500"></i>
+                        <h3 class="text-base font-bold text-slate-900">핵심 이슈 키워드 TOP 12</h3>
+                        <span class="text-xs text-slate-500">기사 제목 어절 빈도 분석 (클릭 시 검색)</span>
+                    </div>
+                </div>
+                <div id="keyword-cloud" class="flex flex-wrap content-start gap-2 pt-1">
+                    <!-- Dynamic Keyword Pills -->
                 </div>
             </section>
 
@@ -348,6 +419,7 @@
                         <select id="sort-select" onchange="applyFilters()" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium bg-white focus:outline-none focus:border-red-500">
                             <option value="date-desc">최신순 (출고일 내림차순)</option>
                             <option value="date-asc">오래된순 (출고일 오름차순)</option>
+                            <option value="format">기사형식순</option>
                             <option value="reporter">기자명순</option>
                             <option value="category">분야별순</option>
                         </select>
@@ -360,6 +432,7 @@
                         <thead>
                         <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
                             <th class="py-3.5 px-4 w-28">보도일</th>
+                            <th class="py-3.5 px-4 w-24">형식</th>
                             <th class="py-3.5 px-4 w-28">분야</th>
                             <th class="py-3.5 px-4 w-32">지역/출입처</th>
                             <th class="py-3.5 px-4">기사 제목</th>
@@ -410,23 +483,35 @@
             <form onsubmit="handleAddSingleArticle(event)" class="p-6 space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">기사 제목 *</label>
-                    <input type="text" id="add-title" required placeholder="예: 사상구, 노후 공단 스마트 그린산단 전환 본격화" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <input type="text" id="add-title" required placeholder="예: 부산시, AI 미래비전 선포... '글로벌 AI 허브' 유치" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">취재 기자 *</label>
-                        <input type="text" id="add-reporter" required placeholder="예: 김석진" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <input type="text" id="add-reporter" required placeholder="예: 김석진 기자" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">보도일 *</label>
                         <input type="date" id="add-date" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">주제 분야 (자동감지 가능)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">기사 형식</label>
+                        <select id="add-format" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                            <option value="AUTO">제목 기반 자동 감지</option>
+                            <option value="단신">단신</option>
+                            <option value="리포트">리포트</option>
+                            <option value="포토뉴스">포토뉴스</option>
+                            <option value="WEB">WEB</option>
+                            <option value="ST대담">ST대담</option>
+                            <option value="출연">출연</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">주제 분야</label>
                         <select id="add-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="AUTO">제목 기반 자동 분류</option>
+                            <option value="AUTO">자동 분류</option>
                             <option value="시정·행정">시정·행정</option>
                             <option value="교육">교육</option>
                             <option value="경제·산업">경제·산업</option>
@@ -439,7 +524,7 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">자치구 / 출입처</label>
                         <select id="add-district" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="AUTO">제목 기반 자동 감지</option>
+                            <option value="AUTO">자동 감지</option>
                             <option value="부산시 전역">부산시 전역</option>
                             <option value="부산시청">부산시청</option>
                             <option value="부산시의회">부산시의회</option>
@@ -492,7 +577,7 @@
                 </p>
 
                 <!-- Reclassification Controls -->
-                <div class="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">취재 기자 변경</label>
                         <select id="detail-reporter-select" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
@@ -501,6 +586,17 @@
                             <option value="장동원">장동원 기자</option>
                             <option value="박재한">박재한 기자</option>
                             <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">기사 형식 변경</label>
+                        <select id="detail-format" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                            <option value="단신">단신</option>
+                            <option value="리포트">리포트</option>
+                            <option value="포토뉴스">포토뉴스</option>
+                            <option value="WEB">WEB</option>
+                            <option value="ST대담">ST대담</option>
+                            <option value="출연">출연</option>
                         </select>
                     </div>
                     <div>
@@ -554,9 +650,18 @@
         // =========================================================================
         // 1. STATE & CONSTANTS
         // =========================================================================
-        const STORAGE_KEY = 'skb_busan_news_excel_articles_v1';
+        const STORAGE_KEY = 'skb_busan_news_excel_articles_v2';
         const DEFAULT_NEWSROOM_URL = 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm';
         const MAIN_REPORTERS = ['김석진', '박철우', '장동원', '박재한'];
+
+        const FORMAT_CONFIG = {
+            '단신': { badge: 'bg-slate-100 text-slate-700 border-slate-300', color: '#475569' },
+            '리포트': { badge: 'bg-red-50 text-red-700 border-red-200', color: '#ea002c' },
+            '포토뉴스': { badge: 'bg-violet-50 text-violet-700 border-violet-200', color: '#7c3aed' },
+            'WEB': { badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', color: '#0891b2' },
+            'ST대담': { badge: 'bg-amber-50 text-amber-700 border-amber-200', color: '#d97706' },
+            '출연': { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', color: '#059669' }
+        };
 
         let allArticles = [];
         let filteredArticles = [];
@@ -569,6 +674,7 @@
         // Chart Instances
         let trendChartInstance = null;
         let reporterChartInstance = null;
+        let formatChartInstance = null;
         let categoryChartInstance = null;
         let districtChartInstance = null;
 
@@ -954,22 +1060,27 @@
                     }
 
                     const summary = pickColumnValue(row, ['요약', '리드문', '본문', '부제', 'summary', 'description']) || title;
+                    const rawFormat = pickColumnValue(row, ['형식', '기사형식', '유형', '형태', 'format', 'type']);
                     const rawCategory = pickColumnValue(row, ['분야', '주제', '카테고리', '분류', '섹션', 'category']);
                     const rawDistrict = pickColumnValue(row, ['지역', '자치구', '출입처', '권역', '구군', 'district', 'region']);
                     const rawUrl = pickColumnValue(row, ['링크', 'url', '주소', '기사링크', '원문']);
                     const rawId = pickColumnValue(row, ['번호', '기사번호', 'id', 'idxno']);
 
                     const validCategories = Object.keys(CATEGORY_CONFIG);
+                    const format = normalizeArticleFormat(rawFormat, rawTitleBeforeClean);
                     const category = validCategories.includes(rawCategory)
                         ? rawCategory
                         : detectCategory(`${title} ${summary} ${rawCategory}`);
-                    const district = rawDistrict || detectDistrict(`${title} ${summary}`);
+                    const district = (rawDistrict && !rawDistrict.includes('부산보도국'))
+                        ? rawDistrict
+                        : detectDistrict(`${title} ${summary}`);
 
                     parsed.push({
                         id: rawId || `xls_${Date.now()}_${fileIdx}_${sIdx}_${idx}`,
                         title,
                         reporter,
                         date,
+                        format,
                         category,
                         district,
                         summary,
@@ -1016,12 +1127,13 @@
             const parsed = [];
             const dateRegex = /(20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2})/;
             const anyRepRegex = /([가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/;
+            const formatRegex = /(포토뉴스|리포트|ST대담|단신|출연|WEB)/i;
             let stickyPdfReporter = findMainReporterInText(fileName);
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 if (line.length < 2) continue;
-                if (/^(전체|기사목록|제목형|요약형|포토형|유튜브|상세검색|더보기|최신기사|많이 본 기사|Copyright|SK브로드밴드)/i.test(line)) continue;
+                if (/^(전체|기사목록|제목형|요약형|포토형|유튜브|상세검색|더보기|최신기사|많이 본 기사|Copyright|SK브로드밴드|지역\s*기자\s*이관형태)/i.test(line)) continue;
 
                 // 단독 기자 탭/섹션 헤더 줄 감지 (예: "김석진 기자", "김석진", "[김석진]")
                 const standaloneRep = findMainReporterInText(line);
@@ -1031,6 +1143,52 @@
                 }
 
                 if (line.length < 8) continue;
+
+                // 백데이터 표 형식("부산보도국-부산 | 박재한 | 데스킹완료 | 단신 | 제목 | 일시...") 우선 처리
+                const isBackdataRow = line.includes('부산보도국') || /(데스킹완료|데스킹요청)/.test(line);
+                if (isBackdataRow) {
+                    const fmtMatch = line.match(formatRegex);
+                    const detectedFmt = normalizeArticleFormat(fmtMatch ? fmtMatch[1] : '', line);
+                    const dateMatches = line.match(/20\d{2}[-./]\d{1,2}[-./]\d{1,2}/g);
+                    const date = normalizeExcelDate(dateMatches ? dateMatches[0] : getTodayStr());
+
+                    // 앞부분 메타 토큰(부산보도국-부산, 기자명, 데스킹상태, 형식) 제거 후 제목 추출
+                    let headPart = line.split(/20\d{2}[-./]\d{1,2}[-./]\d{1,2}/)[0] || line;
+                    // 앞쪽 기자 이름 토큰 추출 (4명 외 작성자는 모두 기타로 통합)
+                    const leadRepMatch = headPart.trim().match(/^(김석진|박철우|장동원|박재한)\b/);
+                    const otherLeadRepMatch = !leadRepMatch ? headPart.trim().match(/^([가-힣]{2,4})\b/) : null;
+                    const rowRep = leadRepMatch
+                        ? leadRepMatch[1]
+                        : (findMainReporterInText(headPart) || (otherLeadRepMatch ? '기타' : (stickyPdfReporter || '기타')));
+                    if (leadRepMatch) {
+                        headPart = headPart.replace(leadRepMatch[0], ' ');
+                    } else if (otherLeadRepMatch) {
+                        headPart = headPart.replace(otherLeadRepMatch[0], ' ');
+                    }
+
+                    // 남은 뒷부분 수정자/데스크 이름 및 시간 조각 정리
+                    let extractedTitle = headPart
+                        .replace(/\b\d{2}:\d{2}(?::\d{2})?\b/g, ' ')
+                        .replace(/\s+(김희수|김석진|박철우|장동원|박재한|정민호|임재희|백서연|이세은|박동욱|김관식)\s*$/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+
+                    extractedTitle = cleanArticleTitle(extractedTitle);
+                    if (extractedTitle.length >= 4) {
+                        parsed.push({
+                            id: `pdf_bd_${Date.now()}_${fileIdx}_${i}`,
+                            title: extractedTitle,
+                            reporter: formatReporterLabel(rowRep),
+                            date,
+                            format: detectedFmt,
+                            category: detectCategory(extractedTitle),
+                            district: detectDistrict(extractedTitle),
+                            summary: `${fileName} 백데이터 (${detectedFmt})`,
+                            url: DEFAULT_NEWSROOM_URL
+                        });
+                        continue;
+                    }
+                }
 
                 const contextCandidates = [
                     lines[i + 1] || '',
@@ -1053,15 +1211,17 @@
 
                 const anyRep = line.match(anyRepRegex) || (lines[i + 1] || '').match(anyRepRegex) || (lines[i - 1] || '').match(anyRepRegex);
                 const dateMatch = line.match(dateRegex) || (lines[i + 1] || '').match(dateRegex) || (lines[i - 1] || '').match(dateRegex);
+                const lineFmtMatch = line.match(formatRegex);
 
                 if (repInLine || repNearby || anyRep || dateMatch) {
                     let title = line
                         .replace(dateRegex, '')
                         .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한|[가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/g, '')
                         .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한)/g, '')
-                        .replace(/\d{2}:\d{2}/g, '')
+                        .replace(/\d{2}:\d{2}(?::\d{2})?/g, '')
                         .trim();
 
+                    const format = normalizeArticleFormat(lineFmtMatch ? lineFmtMatch[1] : '', title);
                     title = cleanArticleTitle(title);
                     if (title.length < 6) continue;
 
@@ -1075,9 +1235,10 @@
                         title,
                         reporter,
                         date,
+                        format,
                         category: detectCategory(title),
                         district: detectDistrict(title),
-                        summary: `${fileName}에서 추출된 기사`,
+                        summary: `${fileName}에서 추출된 기사 (${format})`,
                         url: DEFAULT_NEWSROOM_URL
                     });
                 }
@@ -1086,11 +1247,13 @@
             if (parsed.length === 0) {
                 lines.filter(l => l.length >= 12 && l.length <= 120).slice(0, 50).forEach((l, idx) => {
                     const matched = findMainReporterInText(l) || stickyPdfReporter || '기타';
+                    const format = normalizeArticleFormat('', l);
                     parsed.push({
                         id: `pdf_line_${Date.now()}_${fileIdx}_${idx}`,
                         title: cleanArticleTitle(l),
                         reporter: formatReporterLabel(matched),
                         date: getTodayStr(),
+                        format,
                         category: detectCategory(l),
                         district: detectDistrict(l),
                         summary: `${fileName} 추출 항목`,
@@ -1188,31 +1351,34 @@
             }
             const sampleRows = [
                 {
-                    '보도일': '2026-11-18',
-                    '기사제목': '[부산 오늘 기자회견] 11월18일',
+                    '보도일': '2026-10-28',
+                    '형식': '리포트',
+                    '기사제목': "부산시, AI 미래비전 선포... '글로벌 AI 허브' 유치",
                     '취재기자': '김석진 기자',
-                    '분야': '시정·행정',
-                    '자치구_출입처': '부산시의회',
-                    '요약': '부산시의회 브리핑룸 주요 기자회견 일정 안내',
-                    '링크': 'https://news.skbroadband.com/news/articleView.html?idxno=243507'
+                    '분야': '경제·산업',
+                    '자치구_출입처': '부산시청',
+                    '요약': '부산시 AI 미래비전 선포 및 글로벌 AI 허브 유치 전략',
+                    '링크': 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm'
                 },
                 {
-                    '보도일': '2026-11-16',
-                    '기사제목': '부산 강서구 주민 \'생곡소각장 반대\' 집회',
-                    '취재기자': '박동욱 기자',
-                    '분야': '사회·안전',
-                    '자치구_출입처': '강서구',
-                    '요약': '강서구 주민 집회 및 생곡소각장 전면 백지화 촉구',
-                    '링크': 'https://news.skbroadband.com/news/articleView.html?idxno=243313'
+                    '보도일': '2026-10-28',
+                    '형식': '포토뉴스',
+                    '기사제목': '[포토] 동서대 학생회, 주례2동에 김치 기탁',
+                    '취재기자': '정민호 기자',
+                    '분야': '문화·복지',
+                    '자치구_출입처': '사상구',
+                    '요약': '동서대 학생회 주례2동 취약계층 김치 기탁 포토뉴스',
+                    '링크': 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm'
                 },
                 {
-                    '보도일': '2026-11-13',
-                    '기사제목': '부산 강서구, 통합 LCC 유치 총력',
-                    '취재기자': '박동욱 기자',
+                    '보도일': '2026-10-28',
+                    '형식': 'WEB',
+                    '기사제목': '부산시, 글로벌 AI 허브 유치 전략 발표(WEB)',
+                    '취재기자': '김석진 기자',
                     '분야': '',
                     '자치구_출입처': '',
-                    '요약': '분야·자치구 칸을 비워두면 제목 기반으로 자동 분류됩니다.',
-                    '링크': 'https://news.skbroadband.com/news/articleView.html?idxno=243200'
+                    '요약': '형식(단신/리포트/포토뉴스/WEB/ST대담/출연) 및 분야·자치구 자동 분류 지원',
+                    '링크': 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm'
                 }
             ];
             const ws = XLSX.utils.json_to_sheet(sampleRows);
@@ -1225,6 +1391,20 @@
         // =========================================================================
         // 3. AUTO-CLASSIFICATION & TITLE CLEANING ENGINE
         // =========================================================================
+        function normalizeArticleFormat(rawFormat, title = '') {
+            const rf = String(rawFormat || '').trim().toUpperCase();
+            const t = String(title || '').trim();
+
+            if (rf.includes('포토') || rf.includes('PHOTO') || /^\[포토\]/.test(t) || t.includes('포토뉴스')) return '포토뉴스';
+            if (rf.includes('WEB') || rf.includes('웹') || /\((?:WEB|웹)\)\s*$/i.test(t)) return 'WEB';
+            if (rf.includes('대담') || rf.includes('ST') || t.includes('더 인터뷰') || t.includes('더인터뷰') || /^\[대담\]/.test(t)) return 'ST대담';
+            if (rf.includes('출연') || /^\[출연\]/.test(t)) return '출연';
+            if (rf.includes('리포트') || rf.includes('기획') || rf.includes('REPORT')) return '리포트';
+            if (rf.includes('단신')) return '단신';
+
+            return '단신';
+        }
+
         function cleanArticleTitle(rawTitle) {
             if (!rawTitle) return '';
             let cleaned = String(rawTitle).trim();
@@ -1271,6 +1451,7 @@
                     title: '[부산 오늘 기자회견] 11월18일',
                     reporter: '김석진 기자',
                     date: '2026-11-18',
+                    format: '단신',
                     category: '시정·행정',
                     district: '부산시의회',
                     summary: '부산시의회 브리핑룸 주요 기자회견 일정 안내',
@@ -1281,6 +1462,7 @@
                     title: "남구 '청년기본소득' 조례 부결… 여야 공방",
                     reporter: '박철우 기자',
                     date: '2026-11-16',
+                    format: '리포트',
                     category: '시정·행정',
                     district: '남구',
                     summary: '부산 남구의회 청년기본소득 조례 부결 및 여야 공방 보도',
@@ -1291,6 +1473,7 @@
                     title: '클래식 명반 부산에서…낙동아트센터, 녹음실 변신',
                     reporter: '장동원 기자',
                     date: '2026-11-16',
+                    format: '리포트',
                     category: '문화·복지',
                     district: '강서구',
                     summary: '서부산권 첫 클래식 전용극장 낙동아트센터 전문 음원 녹음 시스템 구축',
@@ -1301,6 +1484,7 @@
                     title: '부산시민단체 "지역거점항공사 대책 마련해야"',
                     reporter: '김석진 기자',
                     date: '2026-11-16',
+                    format: '단신',
                     category: '경제·산업',
                     district: '부산시 전역',
                     summary: '부울경 11개 시민단체 통합LCC 출범에 따른 에어부산 독립 존치 및 지역거점항공사 확보 촉구',
@@ -1309,8 +1493,9 @@
                 {
                     id: '243328',
                     title: '부산 2027년 본예산 19조…미래 대전환',
-                    reporter: '박동욱 기자',
+                    reporter: '김석진 기자',
                     date: '2026-11-16',
+                    format: 'WEB',
                     category: '시정·행정',
                     district: '부산시청',
                     summary: '부산시 2027년도 본예산 19조 원 편성 및 미래 대전환 주요 투자 방향',
@@ -1319,8 +1504,9 @@
                 {
                     id: '243313',
                     title: "부산 강서구 주민 '생곡소각장 반대' 집회",
-                    reporter: '박동욱 기자',
+                    reporter: '장동원 기자',
                     date: '2026-11-16',
+                    format: '단신',
                     category: '사회·안전',
                     district: '강서구',
                     summary: '강서구 주민 집회 및 생곡소각장 전면 백지화 촉구',
@@ -1328,9 +1514,10 @@
                 },
                 {
                     id: '243244',
-                    title: "부산 여성문화회관, 20일 '예술의 밤' 개최",
-                    reporter: '김희수 국장',
+                    title: "[포토] 부산 여성문화회관, 20일 '예술의 밤' 개최",
+                    reporter: '기타',
                     date: '2026-11-16',
+                    format: '포토뉴스',
                     category: '문화·복지',
                     district: '동구',
                     summary: "부산여성문화회관 20일 '예술의 밤' 개최 및 민요판소리 등 공연 안내",
@@ -1338,12 +1525,13 @@
                 },
                 {
                     id: '243210',
-                    title: '[THE 영상] 2026 부산 불꽃축제',
-                    reporter: '박동욱 기자',
+                    title: '더 인터뷰_사상구의회 의장편',
+                    reporter: '기타',
                     date: '2026-11-13',
-                    category: '문화·복지',
-                    district: '수영구',
-                    summary: '광안리해수욕장·이기대·동백섬 일원 제21회 부산불꽃축제 현장 영상',
+                    format: 'ST대담',
+                    category: '시정·행정',
+                    district: '사상구',
+                    summary: '사상구의회 의장 스튜디오 대담 및 지역 현안 인터뷰',
                     url: 'https://news.skbroadband.com/news/articleView.html?idxno=243210'
                 },
                 {
@@ -1351,6 +1539,7 @@
                     title: '강서구 주민 집회 "생곡소각장 원천 무효"',
                     reporter: '장동원 기자',
                     date: '2026-11-13',
+                    format: '리포트',
                     category: '사회·안전',
                     district: '강서구',
                     summary: '부산시 명지소각장 폐쇄 방침 속 강서구 주민들 시청 앞 생곡소각장 백지화 집회',
@@ -1359,8 +1548,9 @@
                 {
                     id: '243200',
                     title: '부산 강서구, 통합 LCC 유치 총력',
-                    reporter: '박동욱 기자',
+                    reporter: '장동원 기자',
                     date: '2026-11-13',
+                    format: '단신',
                     category: '경제·산업',
                     district: '강서구',
                     summary: '부산 강서구의 통합 저비용항공사(LCC) 본사 유치 총력 대응',
@@ -1368,12 +1558,13 @@
                 },
                 {
                     id: '243195',
-                    title: '[부산 주간 기자회견] 11월16일~20일',
+                    title: '[출연] "살 사람은 기다린다".. 고금리에 멈춘 부산 부동산',
                     reporter: '김석진 기자',
                     date: '2026-11-13',
-                    category: '시정·행정',
-                    district: '부산시의회',
-                    summary: '11월 3주차 부산 지역 주요 기관 및 시민단체 기자회견 주간 일정',
+                    format: '출연',
+                    category: '경제·산업',
+                    district: '부산시 전역',
+                    summary: '부산 지역 부동산 시장 동향 및 거래 위축 원인 스튜디오 출연 분석',
                     url: 'https://news.skbroadband.com/news/articleView.html?idxno=243195'
                 },
                 {
@@ -1381,6 +1572,7 @@
                     title: '부산국제의료관광컨벤션 개막…14개국 바이어 참여',
                     reporter: '김석진 기자',
                     date: '2026-11-13',
+                    format: '단신',
                     category: '경제·산업',
                     district: '해운대구',
                     summary: '2026 부산국제의료관광컨벤션 개막 및 14개국 해외 바이어 참여',
@@ -1391,6 +1583,7 @@
                     title: "'세계가 부산을 향해… 1분의 추모'",
                     reporter: '박철우 기자',
                     date: '2026-11-12',
+                    format: '리포트',
                     category: '사회·안전',
                     district: '남구',
                     summary: '유엔기념공원 턴 투워드 부산 20주년 국제 추모 행사 및 블랙이글스 추모 비행',
@@ -1401,6 +1594,7 @@
                     title: '부산 내년 예산 19조3500억 원…미래 대전환',
                     reporter: '장동원 기자',
                     date: '2026-11-10',
+                    format: '단신',
                     category: '시정·행정',
                     district: '부산시청',
                     summary: '부산시 2027년 예산 19조3,500억 원 편성 및 부산형 대중교통 통합패스 도입 추진',
@@ -1411,6 +1605,7 @@
                     title: '부산수학축전 13일 개막…체험부스 86개 운영',
                     reporter: '박재한 기자',
                     date: '2026-11-09',
+                    format: '단신',
                     category: '교육',
                     district: '해운대구',
                     summary: '부산수학문화관 주관 2026 부산수학축전 벡스코 개최 및 체험부스 86개 운영',
@@ -1421,6 +1616,7 @@
                     title: '부산 원도심 교육혁신…지역 인재 키운다',
                     reporter: '박재한 기자',
                     date: '2026-11-04',
+                    format: '리포트',
                     category: '교육',
                     district: '서구·동구',
                     summary: '부산시·교육청·지역 대학·산업 연계 원도심 교육환경 개선 및 인재 양성',
@@ -1428,12 +1624,13 @@
                 },
                 {
                     id: '242304',
-                    title: "부산시, 불꽃축제 '공정가격 숙박업소' 34곳 공개",
-                    reporter: '김희수 국장',
+                    title: "[포토] 광안1동, 겨울철 대비 제설함 점검",
+                    reporter: '기타',
                     date: '2026-11-04',
-                    category: '시정·행정',
+                    format: '포토뉴스',
+                    category: '사회·안전',
                     district: '수영구',
-                    summary: '불꽃축제 대비 바가지요금 근절 위한 공정가격 숙박업소 34곳 비짓부산 공개',
+                    summary: '수영구 광안1동 겨울철 한파·폭설 대비 제설함 점검 현장 포토',
                     url: 'https://news.skbroadband.com/news/articleView.html?idxno=242304'
                 },
                 {
@@ -1441,6 +1638,7 @@
                     title: "부산 북항 돔 아레나…'5만 석 VS 1만 석'",
                     reporter: '김석진 기자',
                     date: '2026-11-02',
+                    format: '리포트',
                     category: '도시·교통',
                     district: '동구',
                     summary: '부산 북항 돔 아레나 건립 규모(5만 석 vs 1만 석) 둘러싼 쟁점 분석',
@@ -1451,6 +1649,7 @@
                     title: "'2026 부산교육동요·합창제' 3일 개막",
                     reporter: '박재한 기자',
                     date: '2026-10-30',
+                    format: '단신',
                     category: '교육',
                     district: '부산시교육청',
                     summary: '부산지역 초·중·고 학생들이 참여하는 2026 부산교육동요·합창제 개최 소식',
@@ -1461,6 +1660,7 @@
                     title: '부산 금융중심지 도약… 산업은행 이전이 관건',
                     reporter: '박철우 기자',
                     date: '2026-10-27',
+                    format: '리포트',
                     category: '경제·산업',
                     district: '남구',
                     summary: '남구의회 산업은행 문현금융단지 이전 촉구 결의문 채택 및 제2차 공공기관 이전 쟁점',
@@ -1524,10 +1724,11 @@
             return articles.map(art => {
                 const combined = `${art.reporter || ''} ${art.title || ''} ${art.summary || ''}`;
                 const found = findMainReporterInText(combined);
+                const format = normalizeArticleFormat(art.format, art.title);
                 if (found) {
-                    return { ...art, reporter: formatReporterLabel(found) };
+                    return { ...art, reporter: formatReporterLabel(found), format };
                 }
-                return { ...art, reporter: formatReporterLabel(art.reporter) };
+                return { ...art, reporter: formatReporterLabel(art.reporter), format };
             });
         }
 
@@ -1594,11 +1795,18 @@
 
             emptyState.classList.add('hidden');
             tbody.innerHTML = filteredArticles.map(art => {
+                const fmt = art.format || '단신';
+                const fmtStyle = FORMAT_CONFIG[fmt]?.badge || 'bg-slate-100 text-slate-700 border-slate-200';
                 const catStyle = CATEGORY_CONFIG[art.category]?.badge || 'bg-slate-100 text-slate-700 border-slate-200';
                 const displayTitle = cleanArticleTitle(art.title);
                 return `
                     <tr onclick="openArticleDetail('${art.id}')" class="hover:bg-slate-50/90 transition-colors cursor-pointer group">
                         <td class="py-3.5 px-4 text-xs font-mono text-slate-500 whitespace-nowrap">${art.date}</td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${fmtStyle}">
+                                ${escapeHtml(fmt)}
+                            </span>
+                        </td>
                         <td class="py-3.5 px-4 whitespace-nowrap">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${catStyle}">
                                 ${art.category}
@@ -1727,6 +1935,7 @@
             document.getElementById('filter-date-start').value = '';
             document.getElementById('filter-date-end').value = '';
             document.getElementById('filter-reporter').value = 'ALL';
+            document.getElementById('filter-format').value = 'ALL';
             document.getElementById('filter-category').value = 'ALL';
             document.getElementById('filter-district').value = 'ALL';
             document.getElementById('filter-keyword').value = '';
@@ -1754,12 +1963,13 @@
             const startDate = document.getElementById('filter-date-start').value;
             const endDate = document.getElementById('filter-date-end').value;
             const reporter = document.getElementById('filter-reporter').value;
+            const format = document.getElementById('filter-format').value;
             const category = document.getElementById('filter-category').value;
             const district = document.getElementById('filter-district').value;
             const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
             const sortBy = document.getElementById('sort-select').value;
 
-            const hasFilter = startDate || endDate || reporter !== 'ALL' || category !== 'ALL' || district !== 'ALL' || keyword !== '';
+            const hasFilter = startDate || endDate || reporter !== 'ALL' || format !== 'ALL' || category !== 'ALL' || district !== 'ALL' || keyword !== '';
             const badge = document.getElementById('active-filter-badge');
             if (hasFilter) badge.classList.remove('hidden');
             else badge.classList.add('hidden');
@@ -1768,10 +1978,11 @@
                 if (startDate && art.date < startDate) return false;
                 if (endDate && art.date > endDate) return false;
                 if (reporter !== 'ALL' && normalizeReporterGroup(art.reporter) !== reporter) return false;
+                if (format !== 'ALL' && (art.format || '단신') !== format) return false;
                 if (category !== 'ALL' && art.category !== category) return false;
                 if (district !== 'ALL' && art.district !== district) return false;
                 if (keyword) {
-                    const hay = `${art.title} ${art.summary} ${formatReporterLabel(art.reporter)} ${art.district} ${art.category}`.toLowerCase();
+                    const hay = `${art.title} ${art.summary} ${art.format || ''} ${formatReporterLabel(art.reporter)} ${art.district} ${art.category}`.toLowerCase();
                     if (!hay.includes(keyword)) return false;
                 }
                 return true;
@@ -1780,6 +1991,7 @@
             filteredArticles.sort((a, b) => {
                 if (sortBy === 'date-desc') return b.date.localeCompare(a.date);
                 if (sortBy === 'date-asc') return a.date.localeCompare(b.date);
+                if (sortBy === 'format') return (a.format || '단신').localeCompare(b.format || '단신');
                 if (sortBy === 'reporter') return formatReporterLabel(a.reporter).localeCompare(formatReporterLabel(b.reporter));
                 if (sortBy === 'category') return a.category.localeCompare(b.category);
                 return 0;
@@ -1915,6 +2127,41 @@
             const sortedCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
             const catColors = sortedCats.map(c => CATEGORY_CONFIG[c[0]]?.color || '#64748b');
 
+            const fmtCounts = countBy(filteredArticles, 'format');
+            const sortedFmts = Object.entries(fmtCounts).sort((a, b) => b[1] - a[1]);
+            const fmtColors = sortedFmts.map(f => FORMAT_CONFIG[f[0]]?.color || '#64748b');
+
+            if (formatChartInstance) formatChartInstance.destroy();
+            formatChartInstance = new Chart(document.getElementById('formatChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: sortedFmts.map(f => f[0]),
+                    datasets: [{
+                        data: sortedFmts.map(f => f[1]),
+                        backgroundColor: fmtColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const clickedFmt = sortedFmts[idx][0];
+                            const fmtSelect = document.getElementById('filter-format');
+                            fmtSelect.value = (fmtSelect.value === clickedFmt) ? 'ALL' : clickedFmt;
+                            applyFilters();
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+                    }
+                }
+            });
+
             if (categoryChartInstance) categoryChartInstance.destroy();
             categoryChartInstance = new Chart(document.getElementById('categoryChart'), {
                 type: 'doughnut',
@@ -1985,13 +2232,16 @@
 
         function handleAddSingleArticle(e) {
             e.preventDefault();
-            const title = cleanArticleTitle(document.getElementById('add-title').value.trim());
+            const rawTitle = document.getElementById('add-title').value.trim();
+            const title = cleanArticleTitle(rawTitle);
             const reporter = formatReporterLabel(document.getElementById('add-reporter').value.trim());
             const date = document.getElementById('add-date').value;
+            let format = document.getElementById('add-format').value;
             let category = document.getElementById('add-category').value;
             let district = document.getElementById('add-district').value;
             const summary = document.getElementById('add-summary').value.trim() || `${title} 관련 SK브로드밴드 부산보도국 취재 기사입니다.`;
 
+            if (format === 'AUTO') format = normalizeArticleFormat('', rawTitle);
             if (category === 'AUTO') category = detectCategory(title + ' ' + summary);
             if (district === 'AUTO') district = detectDistrict(title + ' ' + summary);
 
@@ -2000,6 +2250,7 @@
                 title,
                 reporter,
                 date,
+                format,
                 category,
                 district,
                 summary,
@@ -2023,6 +2274,7 @@
             document.getElementById('detail-date').textContent = art.date;
             document.getElementById('detail-reporter').textContent = formatReporterLabel(art.reporter);
             document.getElementById('detail-reporter-select').value = normalizeReporterGroup(art.reporter);
+            document.getElementById('detail-format').value = art.format || '단신';
             document.getElementById('detail-title').textContent = art.title;
             document.getElementById('detail-summary').textContent = art.summary;
             document.getElementById('detail-category').value = art.category;
@@ -2038,6 +2290,7 @@
             if (!art) return;
 
             art.reporter = formatReporterLabel(document.getElementById('detail-reporter-select').value);
+            art.format = document.getElementById('detail-format').value;
             art.category = document.getElementById('detail-category').value;
             art.district = document.getElementById('detail-district').value;
 
@@ -2066,9 +2319,10 @@
                 showToast('내보낼 기사가 없습니다.', 'error');
                 return;
             }
-            const headers = ['보도일', '분야', '자치구_출입처', '기사제목', '취재기자', '요약', '링크'];
+            const headers = ['보도일', '형식', '분야', '자치구_출입처', '기사제목', '취재기자', '요약', '링크'];
             const rows = filteredArticles.map(a => [
                 a.date,
+                a.format || '단신',
                 a.category,
                 a.district,
                 `"${a.title.replace(/"/g, '""')}"`,
@@ -2149,7 +2403,8 @@
         // 10. INITIALIZATION
         // =========================================================================
         window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('add-date').value = getTodayStr();
+            const addDateEl = document.getElementById('add-date');
+            if (addDateEl) addDateEl.value = getTodayStr();
             loadArticlesFromStorage();
             populateFilterOptions();
             applyFilters();
