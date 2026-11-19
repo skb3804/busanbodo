@@ -58,7 +58,7 @@
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">B tv 부산뉴스</span>
-                            <span id="uploaded-file-badge" class="text-xs text-slate-500 font-medium">기본 샘플 데이터 (20건)</span>
+                            <span id="uploaded-file-badge" class="text-xs text-slate-500 font-medium">업로드 대기 중 (0건)</span>
                         </div>
                         <h1 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">SK브로드밴드 부산보도국 기사 분석 대시보드</h1>
                     </div>
@@ -182,13 +182,15 @@
                     <label class="block text-xs font-semibold text-slate-500 mb-1">분야 / 주제별</label>
                     <select id="filter-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500">
                         <option value="ALL">전체 분야</option>
-                        <option value="시정·행정">시정·행정</option>
+                        <option value="정치/행정">정치/행정</option>
+                        <option value="경제">경제</option>
                         <option value="교육">교육</option>
-                        <option value="경제·산업">경제·산업</option>
-                        <option value="도시·교통">도시·교통</option>
-                        <option value="사건·사고">사건·사고</option>
-                        <option value="사회·안전">사회·안전</option>
-                        <option value="문화·복지">문화·복지</option>
+                        <option value="사회">사회</option>
+                        <option value="사건/사고">사건/사고</option>
+                        <option value="문화/생활">문화/생활</option>
+                        <option value="스포츠">스포츠</option>
+                        <option value="인물/동정">인물/동정</option>
+                        <option value="기타">기타</option>
                     </select>
                 </div>
                 <!-- District / Beat Filter -->
@@ -448,79 +450,14 @@
                         <label class="block text-xs font-bold text-slate-700 mb-1">주제 분야</label>
                         <select id="add-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
                             <option value="AUTO">자동 분류</option>
-                            <option value="시정·행정">시정·행정</option>
+                            <option value="정치/행정">정치/행정</option>
+                            <option value="경제">경제</option>
                             <option value="교육">교육</option>
-                            <option value="경제·산업">경제·산업</option>
-                            <option value="도시·교통">도시·교통</option>
-                            <option value="사건·사고">사건·사고</option>
-                            <option value="사회·안전">사회·안전</option>
-                            <option value="문화·복지">문화·복지</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">자치구 / 출입처</label>
-                        <select id="add-district" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="AUTO">자동 감지</option>
-                            <option value="부산시 전역">부산시 전역</option>
-                            <option value="부산시청">부산시청</option>
-                            <option value="부산시의회">부산시의회</option>
-                            <option value="부산시교육청">부산시교육청</option>
-                            <option value="강서구">강서구</option>
-                            <option value="남구">남구</option>
-                            <option value="수영구">수영구</option>
-                            <option value="동구">동구</option>
-                            <option value="해운대구">해운대구</option>
-                            <option value="서구·동구">서구·동구</option>
-                            <option value="사하구">사하구</option>
-                            <option value="사상구">사상구</option>
-                            <option value="북구">북구</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">리드문 / 요약 (선택)</label>
-                    <textarea id="add-summary" rows="3" placeholder="기사 핵심 요약 내용을 입력하세요." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
-                </div>
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeModal('add-modal')" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">취소</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700">기사 추가</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ===================================================================== -->
-    <!-- MODAL 2: Article Detail & Re-classification Modal -->
-    <!-- ===================================================================== -->
-    <div id="detail-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <span class="text-xs font-bold text-red-600 uppercase tracking-wider">기사 상세 정보 및 분류 수정</span>
-                <button onclick="closeModal('detail-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <div class="p-6 space-y-4">
-                <input type="hidden" id="detail-id">
-                <div class="flex items-center gap-2 text-xs text-slate-500">
-                    <span id="detail-date" class="font-semibold text-slate-700">2026-11-18</span>
-                    <span>•</span>
-                    <span id="detail-reporter" class="font-bold text-blue-600">김석진 기자</span>
-                </div>
-                <h3 id="detail-title" class="text-lg font-bold text-slate-900 leading-snug">기사 제목</h3>
-                <p id="detail-summary" class="text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 leading-relaxed">
-                    기사 요약 내용이 표시됩니다.
-                </p>
-
-                <!-- Reclassification Controls -->
-                <div class="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">취재 기자 변경</label>
-                        <select id="detail-reporter-select" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="김석진">김석진 기자</option>
-                            <option value="박철우">박철우 기자</option>
-                            <option value="장동원">장동원 기자</option>
-                            <option value="박재한">박재한 기자</option>
+                            <option value="사회">사회</option>
+                            <option value="사건/사고">사건/사고</option>
+                            <option value="문화/생활">문화/생활</option>
+                            <option value="스포츠">스포츠</option>
+                            <option value="인물/동정">인물/동정</option>
                             <option value="기타">기타</option>
                         </select>
                     </div>
@@ -538,13 +475,15 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">주제 분야 변경</label>
                         <select id="detail-category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="시정·행정">시정·행정</option>
+                            <option value="정치/행정">정치/행정</option>
+                            <option value="경제">경제</option>
                             <option value="교육">교육</option>
-                            <option value="경제·산업">경제·산업</option>
-                            <option value="도시·교통">도시·교통</option>
-                            <option value="사건·사고">사건·사고</option>
-                            <option value="사회·안전">사회·안전</option>
-                            <option value="문화·복지">문화·복지</option>
+                            <option value="사회">사회</option>
+                            <option value="사건/사고">사건/사고</option>
+                            <option value="문화/생활">문화/생활</option>
+                            <option value="스포츠">스포츠</option>
+                            <option value="인물/동정">인물/동정</option>
+                            <option value="기타">기타</option>
                         </select>
                     </div>
                     <div>
@@ -586,7 +525,7 @@
         // =========================================================================
         // 1. STATE & CONSTANTS
         // =========================================================================
-        const STORAGE_KEY = 'skb_busan_news_excel_articles_v2';
+        const STORAGE_KEY = 'skb_busan_news_excel_articles_v3';
         const DEFAULT_NEWSROOM_URL = 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm';
         const MAIN_REPORTERS = ['김석진', '박철우', '장동원', '박재한'];
 
@@ -605,6 +544,77 @@
 
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Chart Instances
+        let trendChartInstance = null;
+        let reporterChartInstance = null;
+        let categoryChartInstance = null;
+        let formatChartInstance = null;
+
+        // Category Styling & Auto-Classification Keywords (1.xls 분류 기준)
+        const CATEGORY_CONFIG = {
+            '정치/행정': {
+                badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                color: '#4f46e5',
+                keywords: ['부산시', '시의회', '구의회', '구청', '행정', '조례', '예산', '정책', '국비', '공모', '박형준', '구청장', '인사', '협약', '개청', '신청사', '정당', '국회', '의원', '선거', '시정', '브리핑']
+            },
+            '경제': {
+                badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                color: '#059669',
+                keywords: ['경제', '기업', '소상공인', '전통시장', '수출', '일자리', '취업', '창업', '산단', '공단', '조선', '해양', '금융', '투자', '물가', '관광', '유치', '항공사', 'LCC', '부동산', '산업', '상권', '특구']
+            },
+            '교육': {
+                badge: 'bg-sky-50 text-sky-700 border-sky-200',
+                color: '#0284c7',
+                keywords: ['교육청', '학교', '학생', '교사', '수능', '돌봄', '늘봄', '대학', '입시', '교육감', '초등', '중학', '고교', '급식', '장학', '교육', '수학축전', '동요']
+            },
+            '사회': {
+                badge: 'bg-teal-50 text-teal-700 border-teal-200',
+                color: '#0d9488',
+                keywords: ['경찰', '소방', '안전', '태풍', '침수', '단속', '점검', '재난', '예방', '폭염', '한파', '소각장', '집회', '캠페인', '훈련', '방역', '환경', '교통', '도로', '지하철', '도시철도', '버스', '복지', '어르신', '청년', '보육', '병원', '의료', '나눔', '기탁', '봉사', '주민']
+            },
+            '사건/사고': {
+                badge: 'bg-red-50 text-red-700 border-red-200',
+                color: '#dc2626',
+                keywords: ['화재', '불이', '사고', '추돌', '충돌', '전복', '추락', '매몰', '실종', '사망', '부상', '범죄', '검거', '구속', '입건', '수사', '절도', '사기', '폭행', '음주운전', '피해', '유출', '붕괴', '변사', '폭발']
+            },
+            '문화/생활': {
+                badge: 'bg-purple-50 text-purple-700 border-purple-200',
+                color: '#9333ea',
+                keywords: ['축제', '문화', '공연', '전시', '도서관', '불꽃', '영화제', '예술', '클래식', '미술', '음악', '박물관', '연극', '콘서트', '여행', '날씨', '생활', '아트센터']
+            },
+            '스포츠': {
+                badge: 'bg-orange-50 text-orange-700 border-orange-200',
+                color: '#ea580c',
+                keywords: ['스포츠', '야구', '축구', '농구', '배구', '롯데', '아이파크', 'KCC', 'BNK', '마라톤', '대회', '선수', '감독', '우승', '경기', '체육', '올림픽', '아시안게임', '골프']
+            },
+            '인물/동정': {
+                badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                color: '#d97706',
+                keywords: ['인물', '동정', '취임', '이임', '선임', '위촉', '표창', '수상', '부고', '별세', '인터뷰', '대담', '초대석', '만나봅니다']
+            },
+            '기타': {
+                badge: 'bg-slate-100 text-slate-700 border-slate-300',
+                color: '#64748b',
+                keywords: []
+            }
+        };
+
+        function normalizeCategoryLabel(rawCat, fallbackText = '') {
+            const val = String(rawCat || '').replace(/\s+/g, '').trim();
+            if (val) {
+                if (val.includes('정치') || val.includes('행정') || val.includes('시정') || val.includes('의회')) return '정치/행정';
+                if (val.includes('경제') || val.includes('산업') || val.includes('금융') || val.includes('부동산')) return '경제';
+                if (val.includes('교육') || val.includes('학교') || val.includes('대학')) return '교육';
+                if (val.includes('사건') || val.includes('사고') || val.includes('범죄') || val.includes('화재')) return '사건/사고';
+                if (val.includes('문화') || val.includes('생활') || val.includes('예술') || val.includes('관광') || val.includes('축제')) return '문화/생활';
+                if (val.includes('스포츠') || val.includes('체육')) return '스포츠';
+                if (val.includes('인물') || val.includes('동정') || val.includes('인터뷰')) return '인물/동정';
+                if (val.includes('사회') || val.includes('복지') || val.includes('안전') || val.includes('환경') || val.includes('교통')) return '사회';
+                if (val === '기타') return '기타';
+            }
+            return detectCategory(fallbackText);
         }
 
         // Chart Instances
@@ -989,16 +999,13 @@
 
                     const summary = pickColumnValue(row, ['요약', '리드문', '본문', '부제', 'summary', 'description']) || title;
                     const rawFormat = pickColumnValue(row, ['형식', '기사형식', '유형', '형태', 'format', 'type']);
-                    const rawCategory = pickColumnValue(row, ['분야', '주제', '카테고리', '분류', '섹션', 'category']);
+                    const rawCategory = pickColumnValue(row, ['종류', '분야', '주제', '카테고리', '분류', '섹션', 'category']);
                     const rawDistrict = pickColumnValue(row, ['지역', '자치구', '출입처', '권역', '구군', 'district', 'region']);
                     const rawUrl = pickColumnValue(row, ['링크', 'url', '주소', '기사링크', '원문']);
                     const rawId = pickColumnValue(row, ['번호', '기사번호', 'id', 'idxno']);
 
-                    const validCategories = Object.keys(CATEGORY_CONFIG);
                     const format = normalizeArticleFormat(rawFormat, rawTitleBeforeClean);
-                    const category = validCategories.includes(rawCategory)
-                        ? rawCategory
-                        : detectCategory(`${title} ${summary} ${rawCategory}`);
+                    const category = normalizeCategoryLabel(rawCategory, `${title} ${summary}`);
                     const district = (rawDistrict && !rawDistrict.includes('부산보도국'))
                         ? rawDistrict
                         : detectDistrict(`${title} ${summary}`);
@@ -1344,10 +1351,11 @@
         }
 
         function detectCategory(text) {
-            let bestCategory = '시정·행정';
+            let bestCategory = '사회';
             let maxScore = 0;
 
             for (const [cat, config] of Object.entries(CATEGORY_CONFIG)) {
+                if (!config.keywords || config.keywords.length === 0) continue;
                 let score = 0;
                 for (const kw of config.keywords) {
                     if (text.includes(kw)) score++;
@@ -1644,8 +1652,9 @@
             } catch (e) {
                 console.error('Storage load error:', e);
             }
-            allArticles = generateSampleArticles();
-            saveArticlesToStorage();
+            allArticles = [];
+            const badgeEl = document.getElementById('uploaded-file-badge');
+            if (badgeEl) badgeEl.textContent = '업로드 대기 중 (0건)';
         }
 
         function reclassifyExistingReporters(articles) {
@@ -1653,10 +1662,11 @@
                 const combined = `${art.reporter || ''} ${art.title || ''} ${art.summary || ''}`;
                 const found = findMainReporterInText(combined);
                 const format = normalizeArticleFormat(art.format, art.title);
+                const category = normalizeCategoryLabel(art.category, `${art.title || ''} ${art.summary || ''}`);
                 if (found) {
-                    return { ...art, reporter: formatReporterLabel(found), format };
+                    return { ...art, reporter: formatReporterLabel(found), format, category };
                 }
-                return { ...art, reporter: formatReporterLabel(art.reporter), format };
+                return { ...art, reporter: formatReporterLabel(art.reporter), format, category };
             });
         }
 
