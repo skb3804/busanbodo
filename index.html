@@ -617,51 +617,6 @@
             return detectCategory(fallbackText);
         }
 
-        // Chart Instances
-        let trendChartInstance = null;
-        let reporterChartInstance = null;
-        let categoryChartInstance = null;
-        let formatChartInstance = null;
-
-        // Category Styling & Auto-Classification Keywords
-        const CATEGORY_CONFIG = {
-            '시정·행정': {
-                badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-                color: '#4f46e5',
-                keywords: ['부산시', '시의회', '구청', '행정', '조례', '예산', '정책', '국비', '공모', '박형준', '구청장', '인사', '협약', '개청', '신청사']
-            },
-            '교육': {
-                badge: 'bg-sky-50 text-sky-700 border-sky-200',
-                color: '#0284c7',
-                keywords: ['교육청', '학교', '학생', '교사', '수능', '돌봄', '늘봄', '대학', '입시', '교육감', '초등', '중학', '고교', '급식', '장학']
-            },
-            '경제·산업': {
-                badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                color: '#059669',
-                keywords: ['경제', '기업', '소상공인', '전통시장', '수출', '일자리', '취업', '창업', '산단', '공단', '조선', '해양', '금융', '투자', '물가', '관광', '유치']
-            },
-            '도시·교통': {
-                badge: 'bg-amber-50 text-amber-700 border-amber-200',
-                color: '#d97706',
-                keywords: ['도시철도', '지하철', '버스', '도로', '터널', '교량', '재개발', '재건축', '주차', '교통', '가덕도', '신공항', '북항', '철도', '트램', '공원']
-            },
-            '사건·사고': {
-                badge: 'bg-red-50 text-red-700 border-red-200',
-                color: '#dc2626',
-                keywords: ['화재', '불이', '사고', '추돌', '충돌', '전복', '추락', '매몰', '실종', '사망', '부상', '범죄', '검거', '구속', '입건', '수사', '절도', '사기', '폭행', '음주운전', '피해', '유출', '붕괴']
-            },
-            '사회·안전': {
-                badge: 'bg-teal-50 text-teal-700 border-teal-200',
-                color: '#0d9488',
-                keywords: ['경찰', '소방', '안전', '태풍', '침수', '단속', '점검', '재난', '예방', '폭염', '한파', '소각장', '집회', '캠페인', '훈련', '방역', '환경']
-            },
-            '문화·복지': {
-                badge: 'bg-purple-50 text-purple-700 border-purple-200',
-                color: '#9333ea',
-                keywords: ['축제', '문화', '복지', '어르신', '노인', '청년', '출산', '보육', '병원', '의료', '공연', '전시', '도서관', '체육', '불꽃', '영화제', '나눔']
-            }
-        };
-
         // District Detection Rules
         const DISTRICT_RULES = [
             { name: '부산시의회', keys: ['시의회', '브리핑룸', '기자회견'] },
