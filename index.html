@@ -1067,8 +1067,8 @@
                     // 앞부분 메타 토큰(부산보도국-부산, 기자명, 데스킹상태, 형식) 제거 후 제목 추출
                     let headPart = line.split(/20\d{2}[-./]\d{1,2}[-./]\d{1,2}/)[0] || line;
                     // 앞쪽 기자 이름 토큰 추출 (4명 외 작성자는 모두 기타로 통합)
-                    const leadRepMatch = headPart.trim().match(/^(김석진|박철우|장동원|박재한)\b/);
-                    const otherLeadRepMatch = !leadRepMatch ? headPart.trim().match(/^([가-힣]{2,4})\b/) : null;
+                    const leadRepMatch = headPart.trim().match(/^(?:부산보도국(?:\s*-\s*부산)?\s*)?(김석진|박철우|장동원|박재한)\b/);
+                    const otherLeadRepMatch = !leadRepMatch ? headPart.trim().match(/^(?:부산보도국(?:\s*-\s*부산)?\s*)?([가-힣]{2,4})\b/) : null;
                     const rowRep = leadRepMatch
                         ? leadRepMatch[1]
                         : (findMainReporterInText(headPart) || (otherLeadRepMatch ? '기타' : (stickyPdfReporter || '기타')));
@@ -1080,6 +1080,9 @@
 
                     // 남은 뒷부분 수정자/데스크 이름 및 시간 조각 정리
                     let extractedTitle = headPart
+                        .replace(/부산보도국(?:\s*-\s*부산)?/g, ' ')
+                        .replace(/\b(?:데스킹완료|데스킹요청|이관완료|송출완료|승인완료|작성중)\b/g, ' ')
+                        .replace(/^(?:단신|리포트|포토뉴스|ST대담|출연|WEB)\b\s*/i, ' ')
                         .replace(/\b\d{2}:\d{2}(?::\d{2})?\b/g, ' ')
                         .replace(/\s+(김희수|김석진|박철우|장동원|박재한|정민호|임재희|백서연|이세은|박동욱|김관식)\s*$/g, ' ')
                         .replace(/\s+/g, ' ')
@@ -1128,6 +1131,8 @@
                 if (repInLine || repNearby || anyRep || dateMatch) {
                     let title = line
                         .replace(dateRegex, '')
+                        .replace(/부산보도국(?:\s*-\s*부산)?/g, ' ')
+                        .replace(/\b(?:데스킹완료|데스킹요청|이관완료|송출완료|승인완료|작성중)\b/g, ' ')
                         .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한|[가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/g, '')
                         .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한)/g, '')
                         .replace(/\d{2}:\d{2}(?::\d{2})?/g, '')
@@ -1320,10 +1325,19 @@
         function cleanArticleTitle(rawTitle) {
             if (!rawTitle) return '';
             let cleaned = String(rawTitle).trim();
+            // PDF 백데이터 메타 토큰(부서명, 이관상태, 앞뒤 형식 라벨, 시각, 말미 작성자/데스크명) 제거
+            cleaned = cleaned
+                .replace(/부산보도국(?:\s*-\s*부산)?/g, ' ')
+                .replace(/\b(?:데스킹완료|데스킹요청|이관완료|송출완료|승인완료|작성중)\b/g, ' ')
+                .replace(/^(?:단신|리포트|포토뉴스|ST대담|출연|WEB)\b[\s:：\-]*/i, '')
+                .replace(/\b\d{4}[-./]\d{1,2}[-./]\d{1,2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?\b/g, ' ')
+                .replace(/\b\d{2}:\d{2}(?::\d{2})?\b/g, ' ')
+                .replace(/\s+(?:김희수|김석진|박철우|장동원|박재한|정민호|임재희|백서연|이세은|박동욱|김관식)\s*$/g, '');
             // 앞쪽 데스킹 및 말머리 표기([데스킹], (데스킹), [THE 영상], [단독], [속보], 데스킹: 등) 제거
             cleaned = cleaned.replace(/^(?:\[[^\]]*(?:데스킹|영상|단독|속보|현장|기획|리포트|인터뷰|뉴스|브리핑)[^\]]*\]|\([^\)]*(?:데스킹|영상|단독|속보|현장|기획|리포트|인터뷰)[^\)]*\)|(?:데스킹|단독|속보)\s*[:：\-]\s*)+/gi, '');
-            // 뒤쪽 데스킹 표기 제거
-            cleaned = cleaned.replace(/(?:\s*(?:\[[^\]]*데스킹[^\]]*\]|\([^\)]*데스킹[^\)]*\)|[-/|]\s*데스킹))+$/gi, '');
+            // 뒤쪽 데스킹 및 형식 꼬리표 제거
+            cleaned = cleaned.replace(/(?:\s*(?:\[[^\]]*데스킹[^\]]*\]|\([^\)]*데스킹[^\)]*\)|[-/|]\s*데스킹|\((?:WEB|웹)\)))+$/gi, '');
+            cleaned = cleaned.replace(/^[\s|·\-:：/]+|[\s|·\-:：/]+$/g, '').replace(/\s+/g, ' ');
             return cleaned.trim() || String(rawTitle).trim();
         }
 
@@ -1640,10 +1654,11 @@
                 const found = findMainReporterInText(combined);
                 const format = normalizeArticleFormat(art.format, art.title);
                 const category = normalizeCategoryLabel(art.category, `${art.title || ''} ${art.summary || ''}`);
+                const cleanedTitle = cleanArticleTitle(art.title);
                 if (found) {
-                    return { ...art, reporter: formatReporterLabel(found), format, category };
+                    return { ...art, title: cleanedTitle, reporter: formatReporterLabel(found), format, category };
                 }
-                return { ...art, reporter: formatReporterLabel(art.reporter), format, category };
+                return { ...art, title: cleanedTitle, reporter: formatReporterLabel(art.reporter), format, category };
             });
         }
 
