@@ -12,8 +12,6 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- PDF.js (PDF Text Extractor) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- Supabase JS Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts: Pretendard -->
@@ -67,23 +65,6 @@
                 </div>
                 <!-- Action Buttons -->
                 <div class="flex flex-wrap items-center gap-2">
-                    <!-- Supabase Month Selector & Connection Controls -->
-                    <div id="supabase-controls" class="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                        <span id="sb-status-dot" class="w-2 h-2 rounded-full bg-slate-400 ml-1.5" title="Supabase 미연결 (로컬 저장 모드)"></span>
-                        <select id="sb-month-select" onchange="handleMonthSelectChange()" class="text-xs font-bold text-slate-700 bg-transparent px-1.5 py-1 focus:outline-none cursor-pointer" title="불러올 보고 월 선택">
-                            <option value="ALL">전체 누적 DB</option>
-                        </select>
-                        <button type="button" onclick="fetchArticlesFromSupabase(true)" id="btn-sb-sync" class="hidden p-1 rounded hover:bg-white text-slate-600 transition-colors cursor-pointer" title="Supabase DB 새로고침">
-                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                        </button>
-                        <button type="button" onclick="deleteSelectedMonthFromSupabase()" id="btn-sb-delete-month" class="hidden p-1 rounded hover:bg-red-50 text-red-600 transition-colors cursor-pointer" title="선택한 월 데이터 DB에서 삭제">
-                            <i data-lucide="calendar-x" class="w-3.5 h-3.5"></i>
-                        </button>
-                        <button type="button" onclick="openSupabaseModal()" class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold bg-white text-slate-800 shadow-sm hover:bg-slate-50 transition-all cursor-pointer" title="Supabase 프로젝트 URL 및 API Key 설정">
-                            <i data-lucide="database" class="w-3.5 h-3.5 text-emerald-600"></i>
-                            <span id="sb-btn-label">DB 연결</span>
-                        </button>
-                    </div>
                     <button type="button" onclick="downloadExcelTemplate()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer" title="업로드용 표준 엑셀 양식 다운로드">
                         <i data-lucide="file-down" class="w-3.5 h-3.5 text-slate-600"></i>
                         <span class="hidden md:inline">양식 샘플</span>
@@ -105,8 +86,8 @@
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         <!-- PDF & Excel Drag & Drop Upload Banner -->
-        <section id="excel-dropzone" class="relative bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer space-y-3 select-none">
-            <input type="file" id="multi-file-input" accept=".pdf,.xlsx,.xls,.csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple onchange="handleMultiFileSelect(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" title="클릭하거나 파일을 이곳에 끌어다 놓으세요">
+        <section id="excel-dropzone" ondragenter="handleDragEnter(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" onclick="document.getElementById('multi-file-input').click()" class="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer space-y-3 select-none">
+            <input type="file" id="multi-file-input" accept=".pdf,.xlsx,.xls,.csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple onchange="handleMultiFileSelect(event)" class="hidden">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pointer-events-none">
                 <div class="flex items-center gap-3.5">
                     <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
@@ -117,7 +98,7 @@
                         <p class="text-xs text-slate-500 mt-0.5">여러 개 파일(.pdf, .xlsx, .xls, .csv)을 동시에 담은 뒤 우측 <span class="font-semibold text-slate-700">[적용]</span> 버튼을 누르면 단신·리포트·포토뉴스·WEB 등 형식까지 일괄 분석됩니다.</p>
                     </div>
                 </div>
-                <div class="relative z-20 flex items-center gap-2 shrink-0 pointer-events-auto" onclick="event.stopPropagation()">
+                <div class="flex items-center gap-2 shrink-0 pointer-events-auto" onclick="event.stopPropagation()">
                     <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-2 rounded-lg cursor-pointer select-none">
                         <input type="checkbox" id="dedupe-mode" checked class="rounded text-red-600 focus:ring-red-500">
                         <span>중복 기사 제외</span>
@@ -133,7 +114,7 @@
                 </div>
             </div>
             <!-- Queued Files Chips -->
-            <div id="queued-files-bar" onclick="event.stopPropagation()" class="relative z-20 hidden pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
+            <div id="queued-files-bar" onclick="event.stopPropagation()" class="hidden pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                 <div id="queued-files-list" class="flex flex-wrap items-center gap-1.5"></div>
                 <button type="button" onclick="clearQueuedFiles()" class="text-xs text-slate-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition-colors">
                     대기 목록 비우기
@@ -481,71 +462,6 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">자치구/출입처</label>
-                        <select id="add-district" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="AUTO">자동 감지</option>
-                            <option value="부산시 전역">부산시 전역</option>
-                            <option value="부산시청">부산시청</option>
-                            <option value="부산시의회">부산시의회</option>
-                            <option value="부산시교육청">부산시교육청</option>
-                            <option value="강서구">강서구</option>
-                            <option value="남구">남구</option>
-                            <option value="수영구">수영구</option>
-                            <option value="동구">동구</option>
-                            <option value="해운대구">해운대구</option>
-                            <option value="서구·동구">서구·동구</option>
-                            <option value="사하구">사하구</option>
-                            <option value="사상구">사상구</option>
-                            <option value="북구">북구</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">기사 요약 (선택)</label>
-                    <textarea id="add-summary" rows="2" placeholder="기사 핵심 내용을 간략히 입력하세요." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
-                </div>
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeModal('add-modal')" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">취소</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700">기사 등록</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ===================================================================== -->
-    <!-- MODAL 2: Article Detail & Re-classification Modal -->
-    <!-- ===================================================================== -->
-    <div id="detail-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <div class="flex items-center gap-2 text-xs text-slate-500">
-                    <span id="detail-date" class="font-mono font-semibold"></span>
-                    <span>·</span>
-                    <span id="detail-reporter" class="font-bold text-slate-700"></span>
-                </div>
-                <button onclick="closeModal('detail-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <div class="p-6 space-y-4">
-                <input type="hidden" id="detail-id">
-                <div>
-                    <h4 id="detail-title" class="text-base font-extrabold text-slate-900 leading-snug"></h4>
-                    <p id="detail-summary" class="text-xs text-slate-600 mt-2 bg-slate-50 p-3 rounded-xl border border-slate-200/80 leading-relaxed"></p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">취재기자 분류</label>
-                        <select id="detail-reporter-select" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
-                            <option value="김석진">김석진 기자</option>
-                            <option value="박철우">박철우 기자</option>
-                            <option value="장동원">장동원 기자</option>
-                            <option value="박재한">박재한 기자</option>
-                            <option value="기타">기타</option>
-                        </select>
-                    </div>
-                    <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">기사 형식 변경</label>
                         <select id="detail-format" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
                             <option value="단신">단신</option>
@@ -590,59 +506,140 @@
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                <div class="flex items-center justify-between pt-4">
                     <a id="detail-link" href="https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:underline">
                         <span>원문 링크 열기</span>
                         <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
                     </a>
                     <div class="flex gap-2">
-                        <button type="button" onclick="deleteCurrentArticle()" class="px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50">삭제</button>
-                        <button type="button" onclick="saveDetailChanges()" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">분류 저장</button>
+                        <button onclick="deleteCurrentArticle()" class="px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50">삭제</button>
+                        <button onclick="saveDetailChanges()" class="px-4 py-2 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">분류 저장</button>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- ===================================================================== -->
-    <!-- MODAL 3: Supabase Cloud DB Connection Settings -->
-    <!-- ===================================================================== -->
-    <div id="supabase-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="database" class="w-4 h-4 text-emerald-600"></i>
-                    <h3 class="text-base font-bold text-slate-900">Supabase 월별 기사 DB 연동</h3>
-                </div>
-                <button onclick="closeModal('supabase-modal')" class="p-1 rounded-lg text-slate-400 hover:text-slate-700">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <form onsubmit="handleSaveSupabaseConfig(event)" class="p-6 space-y-4">
-                <p class="text-xs text-slate-600 leading-relaxed bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
-                    Supabase 프로젝트의 <strong>Project URL</strong>과 <strong>anon public Key</strong>를 입력하면, 매월 업로드하는 엑셀 기사가 클라우드(<code>busan_articles</code>)에 자동 누적 저장되고 실행 시 불러옵니다.
-                </p>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Project URL *</label>
-                    <input type="url" id="sb-url-input" required placeholder="https://xxxxxxxxxxxx.supabase.co" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Anon Public API Key *</label>
-                    <input type="password" id="sb-key-input" required placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono">
-                </div>
-                <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <button type="button" onclick="disconnectSupabase()" class="px-3 py-2 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50">연결 해제</button>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="closeModal('supabase-modal')" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">닫기</button>
-                        <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700">연결 및 불러오기</button>
-                    </div>
-                </div>
-            </form>
         </div>
     </div>
 
     <!-- JavaScript Application Logic -->
     <script>
+        // =========================================================================
+        // 1. STATE & CONSTANTS
+        // =========================================================================
+        const STORAGE_KEY = 'skb_busan_news_excel_articles_v3';
+        const DEFAULT_NEWSROOM_URL = 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm';
+        const MAIN_REPORTERS = ['김석진', '박철우', '장동원', '박재한'];
+
+        const FORMAT_CONFIG = {
+            '단신': { badge: 'bg-slate-100 text-slate-700 border-slate-300', color: '#475569' },
+            '리포트': { badge: 'bg-red-50 text-red-700 border-red-200', color: '#ea002c' },
+            '포토뉴스': { badge: 'bg-violet-50 text-violet-700 border-violet-200', color: '#7c3aed' },
+            'WEB': { badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', color: '#0891b2' },
+            'ST대담': { badge: 'bg-amber-50 text-amber-700 border-amber-200', color: '#d97706' },
+            '출연': { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', color: '#059669' }
+        };
+
+        let allArticles = [];
+        let filteredArticles = [];
+        let queuedFiles = [];
+
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // Chart Instances
+        let trendChartInstance = null;
+        let reporterChartInstance = null;
+        let categoryChartInstance = null;
+        let formatChartInstance = null;
+
+        // Category Styling & Auto-Classification Keywords (1.xls 분류 기준)
+        const CATEGORY_CONFIG = {
+            '정치/행정': {
+                badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+                color: '#4f46e5',
+                keywords: ['부산시', '시의회', '구의회', '구청', '행정', '조례', '예산', '정책', '국비', '공모', '박형준', '구청장', '인사', '협약', '개청', '신청사', '정당', '국회', '의원', '선거', '시정', '브리핑']
+            },
+            '경제': {
+                badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                color: '#059669',
+                keywords: ['경제', '기업', '소상공인', '전통시장', '수출', '일자리', '취업', '창업', '산단', '공단', '조선', '해양', '금융', '투자', '물가', '관광', '유치', '항공사', 'LCC', '부동산', '산업', '상권', '특구']
+            },
+            '교육': {
+                badge: 'bg-sky-50 text-sky-700 border-sky-200',
+                color: '#0284c7',
+                keywords: ['교육청', '학교', '학생', '교사', '수능', '돌봄', '늘봄', '대학', '입시', '교육감', '초등', '중학', '고교', '급식', '장학', '교육', '수학축전', '동요']
+            },
+            '사회': {
+                badge: 'bg-teal-50 text-teal-700 border-teal-200',
+                color: '#0d9488',
+                keywords: ['경찰', '소방', '안전', '태풍', '침수', '단속', '점검', '재난', '예방', '폭염', '한파', '소각장', '집회', '캠페인', '훈련', '방역', '환경', '교통', '도로', '지하철', '도시철도', '버스', '복지', '어르신', '청년', '보육', '병원', '의료', '나눔', '기탁', '봉사', '주민']
+            },
+            '사건/사고': {
+                badge: 'bg-red-50 text-red-700 border-red-200',
+                color: '#dc2626',
+                keywords: ['화재', '불이', '사고', '추돌', '충돌', '전복', '추락', '매몰', '실종', '사망', '부상', '범죄', '검거', '구속', '입건', '수사', '절도', '사기', '폭행', '음주운전', '피해', '유출', '붕괴', '변사', '폭발']
+            },
+            '문화/생활': {
+                badge: 'bg-purple-50 text-purple-700 border-purple-200',
+                color: '#9333ea',
+                keywords: ['축제', '문화', '공연', '전시', '도서관', '불꽃', '영화제', '예술', '클래식', '미술', '음악', '박물관', '연극', '콘서트', '여행', '날씨', '생활', '아트센터']
+            },
+            '스포츠': {
+                badge: 'bg-orange-50 text-orange-700 border-orange-200',
+                color: '#ea580c',
+                keywords: ['스포츠', '야구', '축구', '농구', '배구', '롯데', '아이파크', 'KCC', 'BNK', '마라톤', '대회', '선수', '감독', '우승', '경기', '체육', '올림픽', '아시안게임', '골프']
+            },
+            '인물/동정': {
+                badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                color: '#d97706',
+                keywords: ['인물', '동정', '취임', '이임', '선임', '위촉', '표창', '수상', '부고', '별세', '인터뷰', '대담', '초대석', '만나봅니다']
+            },
+            '기타': {
+                badge: 'bg-slate-100 text-slate-700 border-slate-300',
+                color: '#64748b',
+                keywords: []
+            }
+        };
+
+        function normalizeCategoryLabel(rawCat, fallbackText = '') {
+            const val = String(rawCat || '').replace(/\s+/g, '').trim();
+            if (val) {
+                if (val.includes('정치') || val.includes('행정') || val.includes('시정') || val.includes('의회')) return '정치/행정';
+                if (val.includes('경제') || val.includes('산업') || val.includes('금융') || val.includes('부동산')) return '경제';
+                if (val.includes('교육') || val.includes('학교') || val.includes('대학')) return '교육';
+                if (val.includes('사건') || val.includes('사고') || val.includes('범죄') || val.includes('화재')) return '사건/사고';
+                if (val.includes('문화') || val.includes('생활') || val.includes('예술') || val.includes('관광') || val.includes('축제')) return '문화/생활';
+                if (val.includes('스포츠') || val.includes('체육')) return '스포츠';
+                if (val.includes('인물') || val.includes('동정') || val.includes('인터뷰')) return '인물/동정';
+                if (val.includes('사회') || val.includes('복지') || val.includes('안전') || val.includes('환경') || val.includes('교통')) return '사회';
+                if (val === '기타') return '기타';
+            }
+            return detectCategory(fallbackText);
+        }
+
+        // District Detection Rules
+        const DISTRICT_RULES = [
+            { name: '부산시의회', keys: ['시의회', '브리핑룸', '기자회견'] },
+            { name: '부산시교육청', keys: ['교육청', '교육감', '늘봄', '학교', '수능', '교육동요'] },
+            { name: '부산시청', keys: ['부산시', '시청', '본예산', '내년 예산', '박형준'] },
+            { name: '강서구', keys: ['강서구', '강서', '명지', '녹산', '가덕', '생곡', '낙동아트센터'] },
+            { name: '남구', keys: ['남구', '용호', '대연', '문현', '유엔기념공원', '산업은행', '턴 투워드'] },
+            { name: '수영구', keys: ['수영구', '수영', '광안리', '광안', '불꽃축제'] },
+            { name: '서구·동구', keys: ['서구·동구', '원도심'] },
+            { name: '동구', keys: ['동구', '북항', '여성문화회관', '초량', '부산역'] },
+            { name: '해운대구', keys: ['해운대구', '해운대', '센텀', '벡스코', '의료관광'] },
+            { name: '사하구', keys: ['사하구', '사하', '다대포', '감천', '하단', '장림'] },
+            { name: '사상구', keys: ['사상구', '사상', '삼락', '엄궁', '감전'] },
+            { name: '북구', keys: ['북구', '구포', '화명', '덕천', '만덕'] },
+            { name: '부산진구', keys: ['부산진구', '서면', '부전', '전포'] },
+            { name: '동래구', keys: ['동래구', '동래', '온천장', '사직'] },
+            { name: '연제구', keys: ['연제구', '연산'] },
+            { name: '금정구', keys: ['금정구', '금정', '장전', '범어사'] },
+            { name: '기장군', keys: ['기장군', '기장', '정관', '일광', '오시리아'] },
+            { name: '중구', keys: ['중구', '남포동', '자갈치', '광복동'] },
+            { name: '영도구', keys: ['영도구', '영도', '태종대'] }
+        ];
+
         // =========================================================================
         // 2. MULTI-FILE (PDF & EXCEL) UPLOAD & PARSING ENGINE
         // =========================================================================
@@ -652,9 +649,32 @@
             const dz = document.getElementById('excel-dropzone');
             if (!dz) return;
             if (active) {
-                dz.classList.add('border-red-500', 'bg-red-50/60', 'ring-4', 'ring-red-500/15');
+                dz.classList.add('border-red-500', 'bg-red-50/50', 'ring-4', 'ring-red-500/10');
             } else {
-                dz.classList.remove('border-red-500', 'bg-red-50/60', 'ring-4', 'ring-red-500/15');
+                dz.classList.remove('border-red-500', 'bg-red-50/50', 'ring-4', 'ring-red-500/10');
+            }
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragDepth++;
+            setDropzoneHighlight(true);
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+            setDropzoneHighlight(true);
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragDepth = Math.max(0, dragDepth - 1);
+            if (dragDepth === 0) {
+                setDropzoneHighlight(false);
             }
         }
 
@@ -662,74 +682,62 @@
             const dt = e.dataTransfer;
             if (!dt) return [];
             const collected = [];
-            const seenKeys = new Set();
-
-            const pushUnique = (f) => {
-                if (!f) return;
-                const key = `${f.name}_${f.size}_${f.lastModified}`;
-                if (!seenKeys.has(key)) {
-                    seenKeys.add(key);
-                    collected.push(f);
-                }
-            };
-
             if (dt.files && dt.files.length > 0) {
                 for (let i = 0; i < dt.files.length; i++) {
-                    pushUnique(dt.files[i]);
+                    if (dt.files[i]) collected.push(dt.files[i]);
                 }
             }
-            if (dt.items && dt.items.length > 0) {
+            if (collected.length === 0 && dt.items && dt.items.length > 0) {
                 for (let i = 0; i < dt.items.length; i++) {
-                    const item = dt.items[i];
-                    if (item && item.kind === 'file' && typeof item.getAsFile === 'function') {
-                        pushUnique(item.getAsFile());
+                    if (dt.items[i].kind === 'file') {
+                        const f = dt.items[i].getAsFile();
+                        if (f) collected.push(f);
                     }
                 }
             }
             return collected;
         }
 
-        // Unconditionally block browser default navigation/download on any drag & drop
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            window.addEventListener(eventName, (e) => {
-                // Allow native drop directly onto the transparent <input type="file">
-                if (e.target && e.target.id === 'multi-file-input') {
-                    if (eventName === 'dragenter' || eventName === 'dragover') {
-                        setDropzoneHighlight(true);
-                    } else {
-                        dragDepth = 0;
-                        setDropzoneHighlight(false);
-                    }
-                    return;
-                }
+        function handleFileDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dragDepth = 0;
+            setDropzoneHighlight(false);
 
-                e.preventDefault();
-                e.stopPropagation();
+            const files = extractFilesFromDropEvent(e);
+            if (files.length > 0) {
+                enqueueFiles(files);
+            } else {
+                showToast('파일을 인식하지 못했습니다. 드롭 영역을 클릭하여 파일을 직접 선택해 주세요.', 'info');
+            }
+        }
 
-                if (eventName === 'dragenter') {
-                    dragDepth++;
-                    setDropzoneHighlight(true);
-                } else if (eventName === 'dragover') {
-                    if (e.dataTransfer) {
-                        try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
-                    }
-                    setDropzoneHighlight(true);
-                } else if (eventName === 'dragleave') {
-                    dragDepth = Math.max(0, dragDepth - 1);
-                    if (dragDepth === 0 || (e.clientX === 0 && e.clientY === 0)) {
-                        dragDepth = 0;
-                        setDropzoneHighlight(false);
-                    }
-                } else if (eventName === 'drop') {
-                    dragDepth = 0;
-                    setDropzoneHighlight(false);
-                    const files = extractFilesFromDropEvent(e);
-                    if (files.length > 0) {
-                        enqueueFiles(files);
-                    }
-                }
-            }, true);
-        });
+        // Prevent browser from opening dropped files anywhere on the page
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        }, false);
+
+        document.addEventListener('dragleave', (e) => {
+            if (e.clientX === 0 && e.clientY === 0) {
+                dragDepth = 0;
+                setDropzoneHighlight(false);
+            }
+        }, false);
+
+        document.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDepth = 0;
+            setDropzoneHighlight(false);
+
+            const dz = document.getElementById('excel-dropzone');
+            if (dz && dz.contains(e.target)) return;
+
+            const files = extractFilesFromDropEvent(e);
+            if (files.length > 0) {
+                enqueueFiles(files);
+            }
+        }, false);
 
         function handleMultiFileSelect(e) {
             const files = Array.from(e.target.files || []);
@@ -738,4 +746,1521 @@
                 e.target.value = '';
             }
         }
-// ... existing code ... -->
+
+        function enqueueFiles(files) {
+            const validExts = ['.pdf', '.xlsx', '.xls', '.csv'];
+            let addedCount = 0;
+
+            files.forEach(file => {
+                const lower = (file.name || '').toLowerCase();
+                if (!validExts.some(ext => lower.endsWith(ext))) {
+                    showToast(`지원하지 않는 형식 제외됨: ${file.name || '알 수 없는 파일'}`, 'error');
+                    return;
+                }
+                const exists = queuedFiles.some(f => f.name === file.name && f.size === file.size);
+                if (!exists) {
+                    queuedFiles.push(file);
+                    addedCount++;
+                }
+            });
+
+            renderQueuedFiles();
+            if (addedCount > 0) {
+                showToast(`${addedCount}개 파일이 대기열에 추가되었습니다. [적용] 버튼을 눌러 분석을 실행하세요.`, 'info');
+            }
+        }
+
+        function removeQueuedFile(idx) {
+            queuedFiles.splice(idx, 1);
+            renderQueuedFiles();
+        }
+
+        function clearQueuedFiles() {
+            queuedFiles = [];
+            renderQueuedFiles();
+        }
+
+        function renderQueuedFiles() {
+            const bar = document.getElementById('queued-files-bar');
+            const list = document.getElementById('queued-files-list');
+            if (!bar || !list) return;
+
+            if (queuedFiles.length === 0) {
+                bar.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+
+            bar.classList.remove('hidden');
+            list.innerHTML = queuedFiles.map((f, idx) => {
+                const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                const badgeStyle = isPdf
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                const label = isPdf ? 'PDF' : 'EXCEL';
+                return `
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium bg-slate-50 border-slate-200 text-slate-700">
+                        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold border ${badgeStyle}">${label}</span>
+                        <span class="max-w-[180px] truncate">${escapeHtml(f.name)}</span>
+                        <button type="button" onclick="removeQueuedFile(${idx})" class="text-slate-400 hover:text-red-600 ml-0.5" title="제외">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </span>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function normalizeExcelDate(val) {
+            if (!val) return getTodayStr();
+            if (typeof val === 'number' && val > 20000 && val < 80000) {
+                const utcDays = Math.floor(val - 25569);
+                const d = new Date(utcDays * 86400 * 1000);
+                if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+            }
+            const str = String(val).trim();
+            const fullMatch = str.match(/(20\d{2})[-./년\s]+(\d{1,2})[-./월\s]+(\d{1,2})/);
+            if (fullMatch) {
+                const y = fullMatch[1];
+                const m = fullMatch[2].padStart(2, '0');
+                const d = fullMatch[3].padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+            const shortMatch = str.match(/^(\d{1,2})[-./](\d{1,2})/);
+            if (shortMatch) {
+                const y = new Date().getFullYear();
+                const m = shortMatch[1].padStart(2, '0');
+                const d = shortMatch[2].padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+            return getTodayStr();
+        }
+
+        function pickColumnValue(row, candidates) {
+            const keys = Object.keys(row);
+            for (const cand of candidates) {
+                const exact = keys.find(k => k.trim().toLowerCase() === cand.toLowerCase());
+                if (exact && row[exact] !== undefined && String(row[exact]).trim() !== '') {
+                    return String(row[exact]).trim();
+                }
+            }
+            for (const cand of candidates) {
+                const partial = keys.find(k => k.trim().toLowerCase().includes(cand.toLowerCase()));
+                if (partial && row[partial] !== undefined && String(row[partial]).trim() !== '') {
+                    return String(row[partial]).trim();
+                }
+            }
+            return '';
+        }
+
+        function extractReporterFromRow(row) {
+            // 1. 우선 '기자' 관련 컬럼 헤더에서 추출 (공백/특수문자 제거 후 비교)
+            const byHeader = pickColumnValue(row, [
+                '기자', '취재기자', '기자명', '담당기자', '작성자', '기자탭', '기자별', '담당', '바이라인', '취재', 'reporter', 'author', 'byline'
+            ]);
+            if (byHeader) {
+                const matchedHeader = findMainReporterInText(byHeader);
+                if (matchedHeader) return matchedHeader;
+            }
+
+            // 2. 행 내 모든 셀 값 전체에서 4명 기자 이름 탐색 (공백·괄호·슬래시 포함 대응)
+            for (const val of Object.values(row)) {
+                const rawCell = String(val ?? '').trim();
+                if (!rawCell) continue;
+                const matched = findMainReporterInText(rawCell);
+                if (matched) return matched;
+            }
+
+            // 3. 다른 셀 값에 'OOO 기자' 패턴이 있는 경우 기타로 분류
+            for (const val of Object.values(row)) {
+                const compactCell = String(val ?? '').replace(/\s+/g, '');
+                if (/^[가-힣]{2,4}(기자|국장|팀장|부장|특파원)$/.test(compactCell)) {
+                    return '기타';
+                }
+            }
+
+            return '';
+        }
+
+        function fillWorksheetMergedCells(worksheet) {
+            const merges = worksheet['!merges'] || [];
+            merges.forEach(range => {
+                const startRef = XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c });
+                const startCell = worksheet[startRef];
+                if (!startCell || startCell.v === undefined || startCell.v === '') return;
+                for (let r = range.s.r; r <= range.e.r; r++) {
+                    for (let c = range.s.c; c <= range.e.c; c++) {
+                        if (r === range.s.r && c === range.s.c) continue;
+                        const targetRef = XLSX.utils.encode_cell({ r, c });
+                        if (!worksheet[targetRef] || worksheet[targetRef].v === undefined || worksheet[targetRef].v === '') {
+                            worksheet[targetRef] = { t: startCell.t || 's', v: startCell.v };
+                        }
+                    }
+                }
+            });
+        }
+
+        function parseExcelBufferToArticles(arrayBuffer, fileIdx) {
+            if (typeof XLSX === 'undefined') {
+                throw new Error('엑셀 파서 라이브러리가 로드되지 않았습니다.');
+            }
+            const data = new Uint8Array(arrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const parsed = [];
+
+            // 모든 시트 순회 (시트 이름이 기자명인 경우에도 자동 활용)
+            workbook.SheetNames.forEach((sheetName, sIdx) => {
+                const worksheet = workbook.Sheets[sheetName];
+                fillWorksheetMergedCells(worksheet);
+                const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                if (!matrix || matrix.length === 0) return;
+
+                // 헤더 행 자동 탐지 (상위 10행 중 '제목' 또는 '기자' 키워드가 있는 행)
+                let headerRowIdx = 0;
+                for (let r = 0; r < Math.min(10, matrix.length); r++) {
+                    const rowStr = (matrix[r] || []).map(c => String(c).replace(/\s+/g, '')).join(' ');
+                    if (/(기사제목|제목|기자|취재기자|작성자|보도일|날짜)/.test(rowStr)) {
+                        headerRowIdx = r;
+                        break;
+                    }
+                }
+
+                const rows = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIdx, defval: '' });
+                const sheetReporter = findMainReporterInText(sheetName);
+
+                // 병합 셀 및 그룹 블록 대응: 위 행의 기자명과 날짜를 아래 빈 행으로 이어받기 (Forward-fill)
+                let lastKnownReporter = sheetReporter;
+                let lastKnownDate = '';
+
+                rows.forEach((row, idx) => {
+                    // 행 전체 텍스트에서 상단 구분 헤더(예: "■ 김석진 기자") 감지
+                    const rowValues = Object.values(row).map(v => String(v ?? '').trim()).filter(Boolean);
+                    if (rowValues.length === 1) {
+                        const sectionRep = findMainReporterInText(rowValues[0]);
+                        if (sectionRep && rowValues[0].replace(/\s+/g, '').length <= 15) {
+                            lastKnownReporter = sectionRep;
+                            return;
+                        }
+                    }
+
+                    let title = pickColumnValue(row, ['기사제목', '제목', 'title', 'headline', '기사명', '내용']);
+                    if (!title) {
+                        const vals = rowValues
+                            .filter(v => v.length >= 6 && !/^https?:\/\//.test(v) && !MAIN_REPORTERS.includes(v.replace(/\s+/g, '')));
+                        vals.sort((a, b) => b.length - a.length);
+                        title = vals[0] || '';
+                    }
+
+                    const rawTitleBeforeClean = title;
+                    title = cleanArticleTitle(title);
+                    if (!title || title.length < 2 || /^(기사제목|제목)$/.test(title.replace(/\s+/g, ''))) return;
+
+                    let extractedRep = extractReporterFromRow(row) || findMainReporterInText(rawTitleBeforeClean);
+                    if (extractedRep) {
+                        lastKnownReporter = extractedRep;
+                    } else if (lastKnownReporter) {
+                        extractedRep = lastKnownReporter;
+                    } else {
+                        extractedRep = '기타';
+                    }
+                    const reporter = formatReporterLabel(extractedRep);
+
+                    const rawDate = row['보도일'] ?? row['날짜'] ?? row['출고일'] ?? row['작성일'] ?? row['등록일'] ?? row['date'] ?? pickColumnValue(row, ['보도일', '날짜', '출고일', '작성일', '일자', 'date']);
+                    let date = '';
+                    if (rawDate !== undefined && String(rawDate).trim() !== '') {
+                        date = normalizeExcelDate(rawDate);
+                        lastKnownDate = date;
+                    } else {
+                        date = lastKnownDate || getTodayStr();
+                    }
+
+                    const summary = pickColumnValue(row, ['요약', '리드문', '본문', '부제', 'summary', 'description']) || title;
+                    const rawFormat = pickColumnValue(row, ['형식', '기사형식', '유형', '형태', 'format', 'type']);
+                    const rawCategory = pickColumnValue(row, ['종류', '분야', '주제', '카테고리', '분류', '섹션', 'category']);
+                    const rawDistrict = pickColumnValue(row, ['지역', '자치구', '출입처', '권역', '구군', 'district', 'region']);
+                    const rawUrl = pickColumnValue(row, ['링크', 'url', '주소', '기사링크', '원문']);
+                    const rawId = pickColumnValue(row, ['번호', '기사번호', 'id', 'idxno']);
+
+                    const format = normalizeArticleFormat(rawFormat, rawTitleBeforeClean);
+                    const category = normalizeCategoryLabel(rawCategory, `${title} ${summary}`);
+                    const district = (rawDistrict && !rawDistrict.includes('부산보도국'))
+                        ? rawDistrict
+                        : detectDistrict(`${title} ${summary}`);
+
+                    parsed.push({
+                        id: rawId || `xls_${Date.now()}_${fileIdx}_${sIdx}_${idx}`,
+                        title,
+                        reporter,
+                        date,
+                        format,
+                        category,
+                        district,
+                        summary,
+                        url: rawUrl || DEFAULT_NEWSROOM_URL
+                    });
+                });
+            });
+            return parsed;
+        }
+
+        async function parsePdfBufferToArticles(arrayBuffer, fileName, fileIdx) {
+            if (typeof pdfjsLib === 'undefined') {
+                throw new Error('PDF 파서 라이브러리가 로드되지 않았습니다.');
+            }
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const lines = [];
+
+            for (let p = 1; p <= pdf.numPages; p++) {
+                const page = await pdf.getPage(p);
+                const content = await page.getTextContent();
+                const items = (content.items || []).filter(it => it.str && it.str.trim());
+
+                // Y좌표(위→아래) 내림차순, 같은 줄(±6px) 내 X좌표(왼→오른) 오름차순 정렬
+                const buckets = [];
+                items.forEach(item => {
+                    const x = item.transform?.[4] || 0;
+                    const y = item.transform?.[5] || 0;
+                    let bucket = buckets.find(b => Math.abs(b.y - y) <= 6);
+                    if (!bucket) {
+                        bucket = { y, parts: [] };
+                        buckets.push(bucket);
+                    }
+                    bucket.parts.push({ x, str: item.str });
+                });
+
+                buckets.sort((a, b) => b.y - a.y);
+                buckets.forEach(b => {
+                    b.parts.sort((a, c) => a.x - c.x);
+                    const merged = b.parts.map(pt => pt.str).join(' ').replace(/\s+/g, ' ').trim();
+                    if (merged) lines.push(merged);
+                });
+            }
+
+            const parsed = [];
+            const dateRegex = /(20\d{2}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2})/;
+            const anyRepRegex = /([가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/;
+            const formatRegex = /(포토뉴스|리포트|ST대담|단신|출연|WEB)/i;
+            let stickyPdfReporter = findMainReporterInText(fileName);
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.length < 2) continue;
+                if (/^(전체|기사목록|제목형|요약형|포토형|유튜브|상세검색|더보기|최신기사|많이 본 기사|Copyright|SK브로드밴드|지역\s*기자\s*이관형태)/i.test(line)) continue;
+
+                // 단독 기자 탭/섹션 헤더 줄 감지 (예: "김석진 기자", "김석진", "[김석진]")
+                const standaloneRep = findMainReporterInText(line);
+                if (standaloneRep && line.replace(/\s+/g, '').length <= 14) {
+                    stickyPdfReporter = standaloneRep;
+                    continue;
+                }
+
+                if (line.length < 8) continue;
+
+                // 백데이터 표 형식("부산보도국-부산 | 박재한 | 데스킹완료 | 단신 | 제목 | 일시...") 우선 처리
+                const isBackdataRow = line.includes('부산보도국') || /(데스킹완료|데스킹요청)/.test(line);
+                if (isBackdataRow) {
+                    const fmtMatch = line.match(formatRegex);
+                    const detectedFmt = normalizeArticleFormat(fmtMatch ? fmtMatch[1] : '', line);
+                    const dateMatches = line.match(/20\d{2}[-./]\d{1,2}[-./]\d{1,2}/g);
+                    const date = normalizeExcelDate(dateMatches ? dateMatches[0] : getTodayStr());
+
+                    // 앞부분 메타 토큰(부산보도국-부산, 기자명, 데스킹상태, 형식) 제거 후 제목 추출
+                    let headPart = line.split(/20\d{2}[-./]\d{1,2}[-./]\d{1,2}/)[0] || line;
+                    // 앞쪽 기자 이름 토큰 추출 (4명 외 작성자는 모두 기타로 통합)
+                    const leadRepMatch = headPart.trim().match(/^(?:부산보도국(?:\s*-\s*부산)?\s*)?(김석진|박철우|장동원|박재한)\b/);
+                    const otherLeadRepMatch = !leadRepMatch ? headPart.trim().match(/^(?:부산보도국(?:\s*-\s*부산)?\s*)?([가-힣]{2,4})\b/) : null;
+                    const rowRep = leadRepMatch
+                        ? leadRepMatch[1]
+                        : (findMainReporterInText(headPart) || (otherLeadRepMatch ? '기타' : (stickyPdfReporter || '기타')));
+                    if (leadRepMatch) {
+                        headPart = headPart.replace(leadRepMatch[0], ' ');
+                    } else if (otherLeadRepMatch) {
+                        headPart = headPart.replace(otherLeadRepMatch[0], ' ');
+                    }
+
+                    // 남은 뒷부분 수정자/데스크 이름 및 시간 조각 정리
+                    let extractedTitle = headPart
+                        .replace(/부산보도국(?:\s*-\s*부산)?/g, ' ')
+                        .replace(/\b(?:데스킹완료|데스킹요청|이관완료|송출완료|승인완료|작성중)\b/g, ' ')
+                        .replace(/^(?:단신|리포트|포토뉴스|ST대담|출연|WEB)\b\s*/i, ' ')
+                        .replace(/\b\d{2}:\d{2}(?::\d{2})?\b/g, ' ')
+                        .replace(/\s+(김희수|김석진|박철우|장동원|박재한|정민호|임재희|백서연|이세은|박동욱|김관식)\s*$/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+
+                    extractedTitle = cleanArticleTitle(extractedTitle);
+                    if (extractedTitle.length >= 4) {
+                        parsed.push({
+                            id: `pdf_bd_${Date.now()}_${fileIdx}_${i}`,
+                            title: extractedTitle,
+                            reporter: formatReporterLabel(rowRep),
+                            date,
+                            format: detectedFmt,
+                            category: detectCategory(extractedTitle),
+                            district: detectDistrict(extractedTitle),
+                            summary: `${fileName} 백데이터 (${detectedFmt})`,
+                            url: DEFAULT_NEWSROOM_URL
+                        });
+                        continue;
+                    }
+                }
+
+                const contextCandidates = [
+                    lines[i + 1] || '',
+                    lines[i - 1] || '',
+                    lines[i + 2] || '',
+                    lines[i - 2] || '',
+                    lines[i + 3] || '',
+                    lines[i - 3] || ''
+                ];
+
+                const repInLine = findMainReporterInText(line);
+                let repNearby = '';
+                for (const cand of contextCandidates) {
+                    const found = findMainReporterInText(cand);
+                    if (found) {
+                        repNearby = found;
+                        break;
+                    }
+                }
+
+                const anyRep = line.match(anyRepRegex) || (lines[i + 1] || '').match(anyRepRegex) || (lines[i - 1] || '').match(anyRepRegex);
+                const dateMatch = line.match(dateRegex) || (lines[i + 1] || '').match(dateRegex) || (lines[i - 1] || '').match(dateRegex);
+                const lineFmtMatch = line.match(formatRegex);
+
+                if (repInLine || repNearby || anyRep || dateMatch) {
+                    let title = line
+                        .replace(dateRegex, '')
+                        .replace(/부산보도국(?:\s*-\s*부산)?/g, ' ')
+                        .replace(/\b(?:데스킹완료|데스킹요청|이관완료|송출완료|승인완료|작성중)\b/g, ' ')
+                        .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한|[가-힣]{2,4})\s*(기자|국장|팀장|부장|특파원)/g, '')
+                        .replace(/(김\s*석\s*진|박\s*철\s*우|장\s*동\s*원|박\s*재\s*한)/g, '')
+                        .replace(/\d{2}:\d{2}(?::\d{2})?/g, '')
+                        .trim();
+
+                    const format = normalizeArticleFormat(lineFmtMatch ? lineFmtMatch[1] : '', title);
+                    title = cleanArticleTitle(title);
+                    if (title.length < 6) continue;
+
+                    const resolvedRep = repInLine || repNearby || stickyPdfReporter || '기타';
+                    const reporter = formatReporterLabel(resolvedRep);
+                    const rawDate = dateMatch ? dateMatch[1] : getTodayStr();
+                    const date = normalizeExcelDate(rawDate);
+
+                    parsed.push({
+                        id: `pdf_${Date.now()}_${fileIdx}_${i}`,
+                        title,
+                        reporter,
+                        date,
+                        format,
+                        category: detectCategory(title),
+                        district: detectDistrict(title),
+                        summary: `${fileName}에서 추출된 기사 (${format})`,
+                        url: DEFAULT_NEWSROOM_URL
+                    });
+                }
+            }
+
+            if (parsed.length === 0) {
+                lines.filter(l => l.length >= 12 && l.length <= 120).slice(0, 50).forEach((l, idx) => {
+                    const matched = findMainReporterInText(l) || stickyPdfReporter || '기타';
+                    const format = normalizeArticleFormat('', l);
+                    parsed.push({
+                        id: `pdf_line_${Date.now()}_${fileIdx}_${idx}`,
+                        title: cleanArticleTitle(l),
+                        reporter: formatReporterLabel(matched),
+                        date: getTodayStr(),
+                        format,
+                        category: detectCategory(l),
+                        district: detectDistrict(l),
+                        summary: `${fileName} 추출 항목`,
+                        url: DEFAULT_NEWSROOM_URL
+                    });
+                });
+            }
+
+            return parsed;
+        }
+
+        async function applyQueuedFiles() {
+            if (queuedFiles.length === 0) {
+                showToast('먼저 분석할 PDF 또는 엑셀 파일을 끌어다 놓거나 선택해 주세요.', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-apply-files');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-60');
+            }
+
+            try {
+                let collected = [];
+                for (let i = 0; i < queuedFiles.length; i++) {
+                    const file = queuedFiles[i];
+                    const buffer = await file.arrayBuffer();
+                    const lower = file.name.toLowerCase();
+                    if (lower.endsWith('.pdf')) {
+                        const pdfItems = await parsePdfBufferToArticles(buffer, file.name, i);
+                        collected.push(...pdfItems);
+                    } else {
+                        const xlsItems = parseExcelBufferToArticles(buffer, i);
+                        collected.push(...xlsItems);
+                    }
+                }
+
+                if (collected.length === 0) {
+                    showToast('업로드한 파일에서 유효한 기사 데이터를 추출하지 못했습니다.', 'error');
+                    return;
+                }
+
+                const dedupeChecked = document.getElementById('dedupe-mode')?.checked ?? true;
+                const fileCount = queuedFiles.length;
+                const fileNamesLabel = fileCount === 1 ? queuedFiles[0].name : `${queuedFiles[0].name} 외 ${fileCount - 1}건`;
+
+                if (dedupeChecked) {
+                    const existingTitles = new Set(allArticles.map(a => a.title.trim()));
+                    const batchSeen = new Set();
+                    const uniqueNew = collected.filter(a => {
+                        const key = a.title.trim();
+                        if (existingTitles.has(key) || batchSeen.has(key)) return false;
+                        batchSeen.add(key);
+                        return true;
+                    });
+                    const skipped = collected.length - uniqueNew.length;
+                    allArticles = [...uniqueNew, ...allArticles];
+                    showToast(`적용 완료: 신규 ${uniqueNew.length}건 반영 (중복 ${skipped}건 제외 · 총 ${allArticles.length}건)`, 'success');
+                } else {
+                    allArticles = [...collected, ...allArticles];
+                    showToast(`적용 완료: ${collected.length}건 전체 반영 (총 ${allArticles.length}건)`, 'success');
+                }
+
+                const badgeEl = document.getElementById('uploaded-file-badge');
+                if (badgeEl) {
+                    badgeEl.textContent = `적용 자료: ${fileNamesLabel} (${allArticles.length}건)`;
+                    badgeEl.className = 'text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200';
+                }
+
+                clearQueuedFiles();
+                saveArticlesToStorage();
+                populateFilterOptions();
+                resetFilters();
+
+                const target = document.getElementById('analysis-results-section');
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (err) {
+                console.error('File batch apply error:', err);
+                showToast(`파일 처리 중 오류가 발생했습니다: ${err.message}`, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-60');
+                }
+            }
+        }
+
+        function downloadExcelTemplate() {
+            if (typeof XLSX === 'undefined') {
+                showToast('엑셀 생성 라이브러리를 불러오는 중입니다.', 'info');
+                return;
+            }
+            const sampleRows = [
+                {
+                    '보도일': '2026-10-28',
+                    '형식': '리포트',
+                    '기사제목': "부산시, AI 미래비전 선포... '글로벌 AI 허브' 유치",
+                    '취재기자': '김석진 기자',
+                    '분야': '경제·산업',
+                    '자치구_출입처': '부산시청',
+                    '요약': '부산시 AI 미래비전 선포 및 글로벌 AI 허브 유치 전략',
+                    '링크': 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm'
+                },
+                {
+                    '보도일': '2026-10-28',
+                    '형식': '포토뉴스',
+                    '기사제목': '[포토] 동서대 학생회, 주례2동에 김치 기탁',
+                    '취재기자': '정민호 기자',
+                    '분야': '문화·복지',
+                    '자치구_출입처': '사상구',
+                    '요약': '동서대 학생회 주례2동 취약계층 김치 기탁 포토뉴스',
+                    '링크': 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm'
+                },
+                {
+                    '보도일': '2026-10-28',
+                    '형식': 'WEB',
+                    '기사제목': '부산시, 글로벌 AI 허브 유치 전략 발표(WEB)',
+                    '취재기자': '김석진 기자',
+                    '분야': '',
+                    '자치구_출입처': '',
+                    '요약': '형식(단신/리포트/포토뉴스/WEB/ST대담/출연) 및 분야·자치구 자동 분류 지원',
+                    '링크': 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm'
+                }
+            ];
+            const ws = XLSX.utils.json_to_sheet(sampleRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '부산보도국_기사목록');
+            XLSX.writeFile(wb, 'SKB_부산보도국_업로드_표준양식.xlsx');
+            showToast('엑셀 표준 양식 파일이 다운로드되었습니다.', 'success');
+        }
+
+        // =========================================================================
+        // 3. AUTO-CLASSIFICATION & TITLE CLEANING ENGINE
+        // =========================================================================
+        function normalizeArticleFormat(rawFormat, title = '') {
+            const rf = String(rawFormat || '').trim().toUpperCase();
+            const t = String(title || '').trim();
+
+            if (rf.includes('포토') || rf.includes('PHOTO') || /^\[포토\]/.test(t) || t.includes('포토뉴스')) return '포토뉴스';
+            if (rf.includes('WEB') || rf.includes('웹') || /\((?:WEB|웹)\)\s*$/i.test(t)) return 'WEB';
+            if (rf.includes('대담') || rf.includes('ST') || t.includes('더 인터뷰') || t.includes('더인터뷰') || /^\[대담\]/.test(t)) return 'ST대담';
+            if (rf.includes('출연') || /^\[출연\]/.test(t)) return '출연';
+            if (rf.includes('리포트') || rf.includes('기획') || rf.includes('REPORT')) return '리포트';
+            if (rf.includes('단신')) return '단신';
+
+            return '단신';
+        }
+
+        function cleanArticleTitle(rawTitle) {
+            if (!rawTitle) return '';
+            let cleaned = String(rawTitle).trim();
+            // "부산보도국-부산 [기자명] 데스킹완료 [형식]" 전체 머리말 패턴 일괄 제거
+            cleaned = cleaned.replace(/^(?:부산보도국(?:\s*-\s*부산)?\s*)?(?:[가-힣]{2,4}\s+)?(?:데스킹완료|데스킹요청|이관완료|송출완료|승인완료|작성중)\s*(?:단신|리포트|포토뉴스|ST대담|출연|WEB)?\s*/i, '');
+            // 개별 잔여 메타 토큰(부서명, 기자명 접두, 이관상태, 앞뒤 형식 라벨, 시각, 말미 작성자/데스크명) 제거
+            cleaned = cleaned
+                .replace(/부산보도국(?:\s*-\s*부산)?/g, ' ')
+                .replace(/^(?:김석진|박철우|장동원|박재한|정민호|임재희|김희수|백서연|이세은|박동욱|김관식)\s+/g, ' ')
+                .replace(/(?:데스킹완료|데스킹요청|이관완료|송출완료|승인완료|작성중)/g, ' ')
+                .replace(/^\s*(?:단신|리포트|포토뉴스|ST대담|출연|WEB)[\s:：\-]+/i, '')
+                .replace(/\b\d{4}[-./]\d{1,2}[-./]\d{1,2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?\b/g, ' ')
+                .replace(/\b\d{2}:\d{2}(?::\d{2})?\b/g, ' ')
+                .replace(/\s+(?:김희수|김석진|박철우|장동원|박재한|정민호|임재희|백서연|이세은|박동욱|김관식)\s*$/g, '');
+            // 앞쪽 데스킹 및 말머리 표기([데스킹], (데스킹), [THE 영상], [단독], [속보], 데스킹: 등) 제거
+            cleaned = cleaned.replace(/^(?:\[[^\]]*(?:데스킹|영상|단독|속보|현장|기획|리포트|인터뷰|뉴스|브리핑)[^\]]*\]|\([^\)]*(?:데스킹|영상|단독|속보|현장|기획|리포트|인터뷰)[^\)]*\)|(?:데스킹|단독|속보)\s*[:：\-]\s*)+/gi, '');
+            // 뒤쪽 데스킹 및 형식 꼬리표 제거
+            cleaned = cleaned.replace(/(?:\s*(?:\[[^\]]*데스킹[^\]]*\]|\([^\)]*데스킹[^\)]*\)|[-/|]\s*데스킹|\((?:WEB|웹)\)))+$/gi, '');
+            cleaned = cleaned.replace(/^[\s|·\-:：/]+|[\s|·\-:：/]+$/g, '').replace(/\s+/g, ' ');
+            return cleaned.trim() || String(rawTitle).trim();
+        }
+
+        function detectCategory(text) {
+            let bestCategory = '사회';
+            let maxScore = 0;
+
+            for (const [cat, config] of Object.entries(CATEGORY_CONFIG)) {
+                if (!config.keywords || config.keywords.length === 0) continue;
+                let score = 0;
+                for (const kw of config.keywords) {
+                    if (text.includes(kw)) score++;
+                }
+                if (score > maxScore) {
+                    maxScore = score;
+                    bestCategory = cat;
+                }
+            }
+            return bestCategory;
+        }
+
+        function detectDistrict(text) {
+            for (const rule of DISTRICT_RULES) {
+                if (rule.keys.some(k => text.includes(k))) {
+                    return rule.name;
+                }
+            }
+            return '부산시 전역';
+        }
+
+        // =========================================================================
+        // 4. DEFAULT SAMPLE DATASET (20 items)
+        // =========================================================================
+        function generateSampleArticles() {
+            return [
+                {
+                    id: '243507',
+                    title: '[부산 오늘 기자회견] 11월18일',
+                    reporter: '김석진 기자',
+                    date: '2026-11-18',
+                    format: '단신',
+                    category: '시정·행정',
+                    district: '부산시의회',
+                    summary: '부산시의회 브리핑룸 주요 기자회견 일정 안내',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243507'
+                },
+                {
+                    id: '243342',
+                    title: "남구 '청년기본소득' 조례 부결… 여야 공방",
+                    reporter: '박철우 기자',
+                    date: '2026-11-16',
+                    format: '리포트',
+                    category: '시정·행정',
+                    district: '남구',
+                    summary: '부산 남구의회 청년기본소득 조례 부결 및 여야 공방 보도',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243342'
+                },
+                {
+                    id: '243337',
+                    title: '클래식 명반 부산에서…낙동아트센터, 녹음실 변신',
+                    reporter: '장동원 기자',
+                    date: '2026-11-16',
+                    format: '리포트',
+                    category: '문화·복지',
+                    district: '강서구',
+                    summary: '서부산권 첫 클래식 전용극장 낙동아트센터 전문 음원 녹음 시스템 구축',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243337'
+                },
+                {
+                    id: '243335',
+                    title: '부산시민단체 "지역거점항공사 대책 마련해야"',
+                    reporter: '김석진 기자',
+                    date: '2026-11-16',
+                    format: '단신',
+                    category: '경제·산업',
+                    district: '부산시 전역',
+                    summary: '부울경 11개 시민단체 통합LCC 출범에 따른 에어부산 독립 존치 및 지역거점항공사 확보 촉구',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243335'
+                },
+                {
+                    id: '243328',
+                    title: '부산 2027년 본예산 19조…미래 대전환',
+                    reporter: '김석진 기자',
+                    date: '2026-11-16',
+                    format: 'WEB',
+                    category: '시정·행정',
+                    district: '부산시청',
+                    summary: '부산시 2027년도 본예산 19조 원 편성 및 미래 대전환 주요 투자 방향',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243328'
+                },
+                {
+                    id: '243313',
+                    title: "부산 강서구 주민 '생곡소각장 반대' 집회",
+                    reporter: '장동원 기자',
+                    date: '2026-11-16',
+                    format: '단신',
+                    category: '사회·안전',
+                    district: '강서구',
+                    summary: '강서구 주민 집회 및 생곡소각장 전면 백지화 촉구',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243313'
+                },
+                {
+                    id: '243244',
+                    title: "[포토] 부산 여성문화회관, 20일 '예술의 밤' 개최",
+                    reporter: '기타',
+                    date: '2026-11-16',
+                    format: '포토뉴스',
+                    category: '문화·복지',
+                    district: '동구',
+                    summary: "부산여성문화회관 20일 '예술의 밤' 개최 및 민요판소리 등 공연 안내",
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243244'
+                },
+                {
+                    id: '243210',
+                    title: '더 인터뷰_사상구의회 의장편',
+                    reporter: '기타',
+                    date: '2026-11-13',
+                    format: 'ST대담',
+                    category: '시정·행정',
+                    district: '사상구',
+                    summary: '사상구의회 의장 스튜디오 대담 및 지역 현안 인터뷰',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243210'
+                },
+                {
+                    id: '243205',
+                    title: '강서구 주민 집회 "생곡소각장 원천 무효"',
+                    reporter: '장동원 기자',
+                    date: '2026-11-13',
+                    format: '리포트',
+                    category: '사회·안전',
+                    district: '강서구',
+                    summary: '부산시 명지소각장 폐쇄 방침 속 강서구 주민들 시청 앞 생곡소각장 백지화 집회',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243205'
+                },
+                {
+                    id: '243200',
+                    title: '부산 강서구, 통합 LCC 유치 총력',
+                    reporter: '장동원 기자',
+                    date: '2026-11-13',
+                    format: '단신',
+                    category: '경제·산업',
+                    district: '강서구',
+                    summary: '부산 강서구의 통합 저비용항공사(LCC) 본사 유치 총력 대응',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243200'
+                },
+                {
+                    id: '243195',
+                    title: '[출연] "살 사람은 기다린다".. 고금리에 멈춘 부산 부동산',
+                    reporter: '김석진 기자',
+                    date: '2026-11-13',
+                    format: '출연',
+                    category: '경제·산업',
+                    district: '부산시 전역',
+                    summary: '부산 지역 부동산 시장 동향 및 거래 위축 원인 스튜디오 출연 분석',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243195'
+                },
+                {
+                    id: '243187',
+                    title: '부산국제의료관광컨벤션 개막…14개국 바이어 참여',
+                    reporter: '김석진 기자',
+                    date: '2026-11-13',
+                    format: '단신',
+                    category: '경제·산업',
+                    district: '해운대구',
+                    summary: '2026 부산국제의료관광컨벤션 개막 및 14개국 해외 바이어 참여',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243187'
+                },
+                {
+                    id: '243019',
+                    title: "'세계가 부산을 향해… 1분의 추모'",
+                    reporter: '박철우 기자',
+                    date: '2026-11-12',
+                    format: '리포트',
+                    category: '사회·안전',
+                    district: '남구',
+                    summary: '유엔기념공원 턴 투워드 부산 20주년 국제 추모 행사 및 블랙이글스 추모 비행',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=243019'
+                },
+                {
+                    id: '242857',
+                    title: '부산 내년 예산 19조3500억 원…미래 대전환',
+                    reporter: '장동원 기자',
+                    date: '2026-11-10',
+                    format: '단신',
+                    category: '시정·행정',
+                    district: '부산시청',
+                    summary: '부산시 2027년 예산 19조3,500억 원 편성 및 부산형 대중교통 통합패스 도입 추진',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242857'
+                },
+                {
+                    id: '242676',
+                    title: '부산수학축전 13일 개막…체험부스 86개 운영',
+                    reporter: '박재한 기자',
+                    date: '2026-11-09',
+                    format: '단신',
+                    category: '교육',
+                    district: '해운대구',
+                    summary: '부산수학문화관 주관 2026 부산수학축전 벡스코 개최 및 체험부스 86개 운영',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242676'
+                },
+                {
+                    id: '242311',
+                    title: '부산 원도심 교육혁신…지역 인재 키운다',
+                    reporter: '박재한 기자',
+                    date: '2026-11-04',
+                    format: '리포트',
+                    category: '교육',
+                    district: '서구·동구',
+                    summary: '부산시·교육청·지역 대학·산업 연계 원도심 교육환경 개선 및 인재 양성',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242311'
+                },
+                {
+                    id: '242304',
+                    title: "[포토] 광안1동, 겨울철 대비 제설함 점검",
+                    reporter: '기타',
+                    date: '2026-11-04',
+                    format: '포토뉴스',
+                    category: '사회·안전',
+                    district: '수영구',
+                    summary: '수영구 광안1동 겨울철 한파·폭설 대비 제설함 점검 현장 포토',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242304'
+                },
+                {
+                    id: '242022',
+                    title: "부산 북항 돔 아레나…'5만 석 VS 1만 석'",
+                    reporter: '김석진 기자',
+                    date: '2026-11-02',
+                    format: '리포트',
+                    category: '도시·교통',
+                    district: '동구',
+                    summary: '부산 북항 돔 아레나 건립 규모(5만 석 vs 1만 석) 둘러싼 쟁점 분석',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=242022'
+                },
+                {
+                    id: '241821',
+                    title: "'2026 부산교육동요·합창제' 3일 개막",
+                    reporter: '박재한 기자',
+                    date: '2026-10-30',
+                    format: '단신',
+                    category: '교육',
+                    district: '부산시교육청',
+                    summary: '부산지역 초·중·고 학생들이 참여하는 2026 부산교육동요·합창제 개최 소식',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=241821'
+                },
+                {
+                    id: '241438',
+                    title: '부산 금융중심지 도약… 산업은행 이전이 관건',
+                    reporter: '박철우 기자',
+                    date: '2026-10-27',
+                    format: '리포트',
+                    category: '경제·산업',
+                    district: '남구',
+                    summary: '남구의회 산업은행 문현금융단지 이전 촉구 결의문 채택 및 제2차 공공기관 이전 쟁점',
+                    url: 'https://news.skbroadband.com/news/articleView.html?idxno=241438'
+                }
+            ];
+        }
+
+        function loadDefaultSampleData(notify = false) {
+            allArticles = generateSampleArticles();
+            const badgeEl = document.getElementById('uploaded-file-badge');
+            if (badgeEl) {
+                badgeEl.textContent = '기본 샘플 데이터 (20건)';
+                badgeEl.className = 'text-xs text-slate-500 font-medium';
+            }
+            saveArticlesToStorage();
+            populateFilterOptions();
+            resetFilters();
+            if (notify) {
+                showToast('기본 샘플 기사 20건으로 복원되었습니다.', 'info');
+            }
+        }
+
+        function clearAllStoredArticles() {
+            allArticles = [];
+            saveArticlesToStorage();
+            populateFilterOptions();
+            resetFilters();
+            showToast('기존 기사 목록을 모두 비웠습니다. 새 파일을 끌어다 놓고 [적용]을 눌러주세요.', 'info');
+        }
+
+        function saveArticlesToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allArticles));
+            } catch (e) {
+                console.error('Storage save error:', e);
+            }
+        }
+
+        function loadArticlesFromStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        allArticles = reclassifyExistingReporters(parsed);
+                        saveArticlesToStorage();
+                        const badgeEl = document.getElementById('uploaded-file-badge');
+                        if (badgeEl) badgeEl.textContent = `저장된 기사 데이터 (${allArticles.length}건)`;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error('Storage load error:', e);
+            }
+            allArticles = [];
+            const badgeEl = document.getElementById('uploaded-file-badge');
+            if (badgeEl) badgeEl.textContent = '업로드 대기 중 (0건)';
+        }
+
+        function reclassifyExistingReporters(articles) {
+            return articles.map(art => {
+                const combined = `${art.reporter || ''} ${art.title || ''} ${art.summary || ''}`;
+                const found = findMainReporterInText(combined);
+                const format = normalizeArticleFormat(art.format, art.title);
+                const category = normalizeCategoryLabel(art.category, `${art.title || ''} ${art.summary || ''}`);
+                const cleanedTitle = cleanArticleTitle(art.title);
+                if (found) {
+                    return { ...art, title: cleanedTitle, reporter: formatReporterLabel(found), format, category };
+                }
+                return { ...art, title: cleanedTitle, reporter: formatReporterLabel(art.reporter), format, category };
+            });
+        }
+
+        function renderArticleTable() {
+            const tbody = document.getElementById('article-table-body');
+            const emptyState = document.getElementById('empty-state');
+            document.getElementById('list-count-badge').textContent = `${filteredArticles.length}건`;
+
+            if (filteredArticles.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = filteredArticles.map(art => {
+                const fmt = art.format || '단신';
+                const fmtStyle = FORMAT_CONFIG[fmt]?.badge || 'bg-slate-100 text-slate-700 border-slate-200';
+                const catStyle = CATEGORY_CONFIG[art.category]?.badge || 'bg-slate-100 text-slate-700 border-slate-200';
+                const displayTitle = cleanArticleTitle(art.title);
+                return `
+                    <tr onclick="openArticleDetail('${art.id}')" class="hover:bg-slate-50/90 transition-colors cursor-pointer group">
+                        <td class="py-3.5 px-4 text-xs font-mono text-slate-500 whitespace-nowrap">${art.date}</td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${fmtStyle}">
+                                ${escapeHtml(fmt)}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${catStyle}">
+                                ${art.category}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-xs font-medium">
+                                <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i>
+                                ${art.district}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-bold text-slate-900 group-hover:text-red-600 transition-colors line-clamp-1">
+                                ${escapeHtml(displayTitle)}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <span class="text-xs font-bold text-slate-700">${escapeHtml(formatReporterLabel(art.reporter))}</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center whitespace-nowrap" onclick="event.stopPropagation()">
+                            <div class="inline-flex items-center gap-1">
+                                <button onclick="openArticleDetail('${art.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200/60" title="분류 수정">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <a href="${art.url}" target="_blank" rel="noopener noreferrer" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" title="원문 사이트 이동">
+                                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        }
+
+        // =========================================================================
+        // 6. FILTERING, SORTING & APPLY BUTTON ACTION
+        // =========================================================================
+        function findMainReporterInText(text) {
+            if (!text) return '';
+            const compact = String(text).replace(/[\s\u00A0\u200B]+/g, '');
+            for (const rep of MAIN_REPORTERS) {
+                if (compact.includes(rep)) return rep;
+            }
+            return '';
+        }
+
+        function normalizeReporterGroup(name) {
+            const found = findMainReporterInText(name);
+            return found || '기타';
+        }
+
+        function formatReporterLabel(name) {
+            const group = normalizeReporterGroup(name);
+            return group === '기타' ? '기타' : `${group} 기자`;
+        }
+
+        function populateFilterOptions() {
+            const repSelect = document.getElementById('filter-reporter');
+            const currentRep = repSelect.value;
+            const presentGroups = new Set(allArticles.map(a => normalizeReporterGroup(a.reporter)));
+            const orderedGroups = [...MAIN_REPORTERS, ...(presentGroups.has('기타') ? ['기타'] : [])];
+
+            repSelect.innerHTML = `<option value="ALL">전체 기자 (${orderedGroups.length}개 분류)</option>`;
+            orderedGroups.forEach(group => {
+                const opt = document.createElement('option');
+                opt.value = group;
+                opt.textContent = formatReporterLabel(group);
+                repSelect.appendChild(opt);
+            });
+            if (orderedGroups.includes(currentRep)) repSelect.value = currentRep;
+
+            const distSelect = document.getElementById('filter-district');
+            const currentDist = distSelect.value;
+            const districts = [...new Set(allArticles.map(a => a.district))].sort();
+            distSelect.innerHTML = '<option value="ALL">전체</option>';
+            districts.forEach(dist => {
+                const opt = document.createElement('option');
+                opt.value = dist;
+                opt.textContent = dist;
+                distSelect.appendChild(opt);
+            });
+            if (districts.includes(currentDist)) distSelect.value = currentDist;
+        }
+
+        function setDatePreset(preset) {
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                if (btn.dataset.preset === preset) {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md bg-white text-slate-900 shadow-sm font-bold transition-all';
+                } else {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all';
+                }
+            });
+
+            const startEl = document.getElementById('filter-date-start');
+            const endEl = document.getElementById('filter-date-end');
+            const latestDateStr = allArticles.length > 0
+                ? [...allArticles].sort((a, b) => b.date.localeCompare(a.date))[0].date
+                : getTodayStr();
+            const anchorDate = new Date(latestDateStr + 'T00:00:00');
+
+            if (preset === 'all') {
+                startEl.value = '';
+                endEl.value = '';
+            } else if (preset === '7d') {
+                const past = new Date(anchorDate);
+                past.setDate(past.getDate() - 7);
+                startEl.value = past.toISOString().split('T')[0];
+                endEl.value = latestDateStr;
+            } else if (preset === '15d') {
+                const past = new Date(anchorDate);
+                past.setDate(past.getDate() - 15);
+                startEl.value = past.toISOString().split('T')[0];
+                endEl.value = latestDateStr;
+            } else if (preset === '30d') {
+                const past = new Date(anchorDate);
+                past.setDate(past.getDate() - 30);
+                startEl.value = past.toISOString().split('T')[0];
+                endEl.value = latestDateStr;
+            }
+            applyFilters();
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-date-start').value = '';
+            document.getElementById('filter-date-end').value = '';
+            document.getElementById('filter-reporter').value = 'ALL';
+            document.getElementById('filter-format').value = 'ALL';
+            document.getElementById('filter-category').value = 'ALL';
+            document.getElementById('filter-district').value = 'ALL';
+            document.getElementById('filter-keyword').value = '';
+
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                if (btn.dataset.preset === 'all') {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md bg-white text-slate-900 shadow-sm font-bold transition-all';
+                } else {
+                    btn.className = 'preset-btn px-2.5 py-1 rounded-md text-slate-600 hover:text-slate-900 transition-all';
+                }
+            });
+            applyFilters();
+        }
+
+        function handleApplyButtonClick() {
+            applyFilters();
+            const target = document.getElementById('analysis-results-section');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            showToast(`조건 적용 완료: 총 ${filteredArticles.length}건의 기사가 분석되었습니다.`, 'info');
+        }
+
+        function applyFilters() {
+            const startDate = document.getElementById('filter-date-start').value;
+            const endDate = document.getElementById('filter-date-end').value;
+            const reporter = document.getElementById('filter-reporter').value;
+            const format = document.getElementById('filter-format').value;
+            const category = document.getElementById('filter-category').value;
+            const district = document.getElementById('filter-district').value;
+            const keyword = document.getElementById('filter-keyword').value.trim().toLowerCase();
+            const sortBy = document.getElementById('sort-select').value;
+
+            const hasFilter = startDate || endDate || reporter !== 'ALL' || format !== 'ALL' || category !== 'ALL' || district !== 'ALL' || keyword !== '';
+            const badge = document.getElementById('active-filter-badge');
+            if (hasFilter) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
+
+            filteredArticles = allArticles.filter(art => {
+                if (startDate && art.date < startDate) return false;
+                if (endDate && art.date > endDate) return false;
+                if (reporter !== 'ALL' && normalizeReporterGroup(art.reporter) !== reporter) return false;
+                if (format !== 'ALL' && (art.format || '단신') !== format) return false;
+                if (category !== 'ALL' && art.category !== category) return false;
+                if (district !== 'ALL' && art.district !== district) return false;
+                if (keyword) {
+                    const hay = `${art.title} ${art.summary} ${art.format || ''} ${formatReporterLabel(art.reporter)} ${art.district} ${art.category}`.toLowerCase();
+                    if (!hay.includes(keyword)) return false;
+                }
+                return true;
+            });
+
+            filteredArticles.sort((a, b) => {
+                if (sortBy === 'date-desc') return b.date.localeCompare(a.date);
+                if (sortBy === 'date-asc') return a.date.localeCompare(b.date);
+                if (sortBy === 'format') return (a.format || '단신').localeCompare(b.format || '단신');
+                if (sortBy === 'reporter') return formatReporterLabel(a.reporter).localeCompare(formatReporterLabel(b.reporter));
+                if (sortBy === 'category') return a.category.localeCompare(b.category);
+                return 0;
+            });
+
+            updateDashboardUI();
+        }
+
+        // =========================================================================
+        // 7. DASHBOARD ANALYTICS, CHARTS & TABLE RENDERING
+        // =========================================================================
+        function updateDashboardUI() {
+            updateKPIs();
+            renderCharts();
+            renderArticleTable();
+        }
+
+        function updateKPIs() {
+            const setText = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = text;
+            };
+
+            const total = filteredArticles.length;
+            const allCount = allArticles.length;
+            setText('kpi-total', total.toLocaleString());
+            const pct = allCount > 0 ? Math.round((total / allCount) * 100) : 0;
+            setText('kpi-total-sub', `전체 ${allCount}건 중 ${pct}% 표시`);
+
+            if (total === 0) {
+                setText('kpi-reporter-count', '0');
+                setText('kpi-top-reporter-info', '최다 출고: -');
+                setText('kpi-top-category', '-');
+                setText('kpi-daily-avg-info', '일평균 0.0건 출고');
+                setText('kpi-top-district', '-');
+                setText('kpi-date-span', '데이터 없음');
+                return;
+            }
+
+            const dates = filteredArticles.map(a => a.date).sort();
+            const minDate = new Date(dates[0]);
+            const maxDate = new Date(dates[dates.length - 1]);
+            const diffDays = Math.max(1, Math.round((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1);
+            const dailyAvg = (total / diffDays).toFixed(1);
+            setText('kpi-date-span', `${dates[0]} ~ ${dates[dates.length - 1]}`);
+
+            const repCounts = countByReporterGroup(filteredArticles);
+            const repEntries = Object.entries(repCounts).sort((a, b) => b[1] - a[1]);
+            const topRep = repEntries[0];
+            setText('kpi-reporter-count', repEntries.length.toLocaleString());
+            setText('kpi-top-reporter-info', `최다: ${formatReporterLabel(topRep[0])} (${topRep[1]}건)`);
+
+            const catCounts = countBy(filteredArticles, 'category');
+            const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
+            setText('kpi-top-category', `${topCat[0]} (${topCat[1]}건)`);
+            setText('kpi-daily-avg-info', `비중 ${Math.round((topCat[1] / total) * 100)}% · 일평균 ${dailyAvg}건`);
+
+            const distCounts = countBy(filteredArticles, 'district');
+            const topDist = Object.entries(distCounts).sort((a, b) => b[1] - a[1])[0];
+            setText('kpi-top-district', `${topDist[0]} (${topDist[1]}건)`);
+        }
+
+        function renderCharts() {
+            const dateCounts = countBy(filteredArticles, 'date');
+            const sortedDates = Object.keys(dateCounts).sort();
+            const trendLabels = sortedDates.map(d => d.slice(5));
+            const trendValues = sortedDates.map(d => dateCounts[d]);
+
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [{
+                        label: '출고 기사 수',
+                        data: trendValues,
+                        borderColor: '#ea002c',
+                        backgroundColor: 'rgba(234, 0, 44, 0.08)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#ea002c',
+                        pointRadius: 3.5,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            const repCounts = countByReporterGroup(filteredArticles);
+            const sortedReps = Object.entries(repCounts).sort((a, b) => b[1] - a[1]);
+
+            if (reporterChartInstance) reporterChartInstance.destroy();
+            reporterChartInstance = new Chart(document.getElementById('reporterChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedReps.map(r => formatReporterLabel(r[0])),
+                    datasets: [{
+                        label: '기사 건수',
+                        data: sortedReps.map(r => r[1]),
+                        backgroundColor: '#1e293b',
+                        hoverBackgroundColor: '#f47725',
+                        borderRadius: 6,
+                        barThickness: 18
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const clickedRep = sortedReps[idx][0];
+                            const repSelect = document.getElementById('filter-reporter');
+                            repSelect.value = (repSelect.value === clickedRep) ? 'ALL' : clickedRep;
+                            applyFilters();
+                        }
+                    },
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#f1f5f9' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+
+            const catCounts = countBy(filteredArticles, 'category');
+            const sortedCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+            const catColors = sortedCats.map(c => CATEGORY_CONFIG[c[0]]?.color || '#64748b');
+
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            categoryChartInstance = new Chart(document.getElementById('categoryChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: sortedCats.map(c => c[0]),
+                    datasets: [{
+                        data: sortedCats.map(c => c[1]),
+                        backgroundColor: catColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const clickedCat = sortedCats[idx][0];
+                            const catSelect = document.getElementById('filter-category');
+                            catSelect.value = (catSelect.value === clickedCat) ? 'ALL' : clickedCat;
+                            applyFilters();
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } }
+                    }
+                }
+            });
+
+            const fmtCounts = countBy(filteredArticles, 'format');
+            const sortedFmts = Object.entries(fmtCounts).sort((a, b) => b[1] - a[1]);
+            const fmtColors = sortedFmts.map(f => FORMAT_CONFIG[f[0]]?.color || '#64748b');
+
+            if (formatChartInstance) formatChartInstance.destroy();
+            formatChartInstance = new Chart(document.getElementById('formatChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: sortedFmts.map(f => f[0]),
+                    datasets: [{
+                        data: sortedFmts.map(f => f[1]),
+                        backgroundColor: fmtColors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            const clickedFmt = sortedFmts[idx][0];
+                            const fmtSelect = document.getElementById('filter-format');
+                            fmtSelect.value = (fmtSelect.value === clickedFmt) ? 'ALL' : clickedFmt;
+                            applyFilters();
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function handleAddSingleArticle(e) {
+            e.preventDefault();
+            const rawTitle = document.getElementById('add-title').value.trim();
+            const title = cleanArticleTitle(rawTitle);
+            const reporter = formatReporterLabel(document.getElementById('add-reporter').value.trim());
+            const date = document.getElementById('add-date').value;
+            let format = document.getElementById('add-format').value;
+            let category = document.getElementById('add-category').value;
+            let district = document.getElementById('add-district').value;
+            const summary = document.getElementById('add-summary').value.trim() || `${title} 관련 SK브로드밴드 부산보도국 취재 기사입니다.`;
+
+            if (format === 'AUTO') format = normalizeArticleFormat('', rawTitle);
+            if (category === 'AUTO') category = detectCategory(title + ' ' + summary);
+            if (district === 'AUTO') district = detectDistrict(title + ' ' + summary);
+
+            allArticles.unshift({
+                id: 'manual_' + Date.now(),
+                title,
+                reporter,
+                date,
+                format,
+                category,
+                district,
+                summary,
+                url: DEFAULT_NEWSROOM_URL
+            });
+
+            saveArticlesToStorage();
+            populateFilterOptions();
+            applyFilters();
+            closeModal('add-modal');
+            e.target.reset();
+            document.getElementById('add-date').value = getTodayStr();
+            showToast('새 기사가 추가되었습니다.', 'success');
+        }
+
+        function openArticleDetail(id) {
+            const art = allArticles.find(a => a.id === id);
+            if (!art) return;
+
+            document.getElementById('detail-id').value = art.id;
+            document.getElementById('detail-date').textContent = art.date;
+            document.getElementById('detail-reporter').textContent = formatReporterLabel(art.reporter);
+            document.getElementById('detail-reporter-select').value = normalizeReporterGroup(art.reporter);
+            document.getElementById('detail-format').value = art.format || '단신';
+            document.getElementById('detail-title').textContent = art.title;
+            document.getElementById('detail-summary').textContent = art.summary;
+            document.getElementById('detail-category').value = art.category;
+            document.getElementById('detail-district').value = art.district;
+            document.getElementById('detail-link').href = art.url || DEFAULT_NEWSROOM_URL;
+
+            openModal('detail-modal');
+        }
+
+        function saveDetailChanges() {
+            const id = document.getElementById('detail-id').value;
+            const art = allArticles.find(a => a.id === id);
+            if (!art) return;
+
+            art.reporter = formatReporterLabel(document.getElementById('detail-reporter-select').value);
+            art.format = document.getElementById('detail-format').value;
+            art.category = document.getElementById('detail-category').value;
+            art.district = document.getElementById('detail-district').value;
+
+            saveArticlesToStorage();
+            populateFilterOptions();
+            applyFilters();
+            closeModal('detail-modal');
+            showToast('기사 분류 정보가 업데이트되었습니다.', 'success');
+        }
+
+        function deleteCurrentArticle() {
+            const id = document.getElementById('detail-id').value;
+            allArticles = allArticles.filter(a => a.id !== id);
+            saveArticlesToStorage();
+            populateFilterOptions();
+            applyFilters();
+            closeModal('detail-modal');
+            showToast('기사가 목록에서 삭제되었습니다.', 'info');
+        }
+
+        // =========================================================================
+        // 9. EXPORT & UI HELPERS
+        // =========================================================================
+        function exportCSV() {
+            if (filteredArticles.length === 0) {
+                showToast('내보낼 기사가 없습니다.', 'error');
+                return;
+            }
+            const headers = ['보도일', '형식', '분야', '자치구_출입처', '기사제목', '취재기자', '요약', '링크'];
+            const rows = filteredArticles.map(a => [
+                a.date,
+                a.format || '단신',
+                a.category,
+                a.district,
+                `"${a.title.replace(/"/g, '""')}"`,
+                formatReporterLabel(a.reporter),
+                `"${a.summary.replace(/"/g, '""')}"`,
+                a.url
+            ]);
+
+            const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SKB_부산보도국_기사분석_${getTodayStr()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`CSV 파일(${filteredArticles.length}건) 다운로드가 시작되었습니다.`, 'success');
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-900 text-white border-emerald-700',
+                error: 'bg-red-900 text-white border-red-700',
+                info: 'bg-slate-900 text-white border-slate-700'
+            };
+            toast.className = `px-4 py-3 rounded-xl border shadow-lg text-xs font-semibold flex items-center gap-2 transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3400);
+        }
+
+        function countBy(arr, key) {
+            return arr.reduce((acc, item) => {
+                const val = item[key] || '기타';
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
+        }
+
+        function countByReporterGroup(arr) {
+            return arr.reduce((acc, item) => {
+                const val = normalizeReporterGroup(item.reporter);
+                acc[val] = (acc[val] || 0) + 1;
+                return acc;
+            }, {});
+        }
+
+        function getTodayStr() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // =========================================================================
+        // 10. INITIALIZATION
+        // =========================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            const addDateEl = document.getElementById('add-date');
+            if (addDateEl) addDateEl.value = getTodayStr();
+            loadArticlesFromStorage();
+            populateFilterOptions();
+            applyFilters();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
