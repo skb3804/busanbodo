@@ -105,7 +105,7 @@
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
         <!-- PDF & Excel Drag & Drop Upload Banner -->
-        <section id="excel-dropzone" ondragenter="handleDragEnter(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleFileDrop(event)" onclick="document.getElementById('multi-file-input').click()" class="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer space-y-3 select-none">
+        <section id="excel-dropzone" onclick="document.getElementById('multi-file-input').click()" class="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-400 hover:bg-red-50/20 p-4 sm:px-6 sm:py-4 transition-all cursor-pointer space-y-3 select-none">
             <input type="file" id="multi-file-input" accept=".pdf,.xlsx,.xls,.csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" multiple onchange="handleMultiFileSelect(event)" class="hidden">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pointer-events-none">
                 <div class="flex items-center gap-3.5">
@@ -644,54 +644,108 @@
     <!-- JavaScript Application Logic -->
     <script>
         // =========================================================================
-        // 1. STATE & CONSTANTS
+        // 2. MULTI-FILE (PDF & EXCEL) UPLOAD & PARSING ENGINE
         // =========================================================================
-        const STORAGE_KEY = 'skb_busan_news_excel_articles_v3';
-        const SB_CONFIG_KEY = 'skb_busan_supabase_config_v1';
-        const DEFAULT_SB_URL = 'https://pbsvmqznuthkgckzrjum.supabase.co';
-        const DEFAULT_SB_KEY = 'sb_publishable_SnBnWJy5dV7Ioe99kbx99Q_f7pcqRFK';
-        const SB_TABLE_NAME = 'busan_articles';
-        const DEFAULT_NEWSROOM_URL = 'https://news.skbroadband.com/news/articleList.html?sc_section_code=S1N7&view_type=sm';
-        const MAIN_REPORTERS = ['김석진', '박철우', '장동원', '박재한'];
-// ... existing code ... -->
-        // =========================================================================
-        // 8.5 SUPABASE CLOUD DB SYNC ENGINE
-        // =========================================================================
-        function sanitizeSupabaseUrl(rawUrl) {
-            return String(rawUrl || '')
-                .trim()
-                .replace(/\/rest\/v1\/?$/i, '')
-                .replace(/\/+$/, '');
+        let dragDepth = 0;
+
+        function setDropzoneHighlight(active) {
+            const dz = document.getElementById('excel-dropzone');
+            if (!dz) return;
+            if (active) {
+                dz.classList.add('border-red-500', 'bg-red-50/60', 'ring-4', 'ring-red-500/15');
+            } else {
+                dz.classList.remove('border-red-500', 'bg-red-50/60', 'ring-4', 'ring-red-500/15');
+            }
         }
 
-        function getSavedSupabaseConfig() {
-            try {
-                const raw = localStorage.getItem(SB_CONFIG_KEY);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (parsed?.url && parsed?.anonKey) {
-                        return { url: sanitizeSupabaseUrl(parsed.url), anonKey: parsed.anonKey.trim() };
+        function hasDraggedFiles(e) {
+            const dt = e.dataTransfer;
+            if (!dt) return false;
+            if (dt.files && dt.files.length > 0) return true;
+            if (dt.types) {
+                const types = Array.from(dt.types);
+                if (types.includes('Files') || types.includes('application/x-moz-file')) return true;
+            }
+            return false;
+        }
+
+        function extractFilesFromDropEvent(e) {
+            const dt = e.dataTransfer;
+            if (!dt) return [];
+            const collected = [];
+            const seenKeys = new Set();
+
+            const pushUnique = (f) => {
+                if (!f) return;
+                const key = `${f.name}_${f.size}_${f.lastModified}`;
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    collected.push(f);
+                }
+            };
+
+            if (dt.files && dt.files.length > 0) {
+                for (let i = 0; i < dt.files.length; i++) {
+                    pushUnique(dt.files[i]);
+                }
+            }
+            if (dt.items && dt.items.length > 0) {
+                for (let i = 0; i < dt.items.length; i++) {
+                    const item = dt.items[i];
+                    if (item && item.kind === 'file' && typeof item.getAsFile === 'function') {
+                        pushUnique(item.getAsFile());
                     }
                 }
-            } catch (e) {}
-            if (DEFAULT_SB_URL && DEFAULT_SB_KEY) {
-                return { url: sanitizeSupabaseUrl(DEFAULT_SB_URL), anonKey: DEFAULT_SB_KEY };
             }
-            return null;
+            return collected;
         }
-// ... existing code ... -->
-        async function handleSaveSupabaseConfig(e) {
-            e.preventDefault();
-            const url = sanitizeSupabaseUrl(document.getElementById('sb-url-input').value);
-            const anonKey = document.getElementById('sb-key-input').value.trim();
-            if (!url || !anonKey) return;
 
-            localStorage.setItem(SB_CONFIG_KEY, JSON.stringify({ url, anonKey }));
-            if (initSupabaseFromStorage()) {
-                closeModal('supabase-modal');
-                await fetchArticlesFromSupabase(true);
+        // Capture-phase global drag & drop handlers so Excel/PDF drops work reliably anywhere on the page
+        window.addEventListener('dragenter', (e) => {
+            if (!hasDraggedFiles(e)) return;
+            e.preventDefault();
+            dragDepth++;
+            setDropzoneHighlight(true);
+        }, true);
+
+        window.addEventListener('dragover', (e) => {
+            if (!hasDraggedFiles(e)) return;
+            e.preventDefault();
+            if (e.dataTransfer) {
+                try { e.dataTransfer.dropEffect = 'copy'; } catch (_) {}
+            }
+            setDropzoneHighlight(true);
+        }, true);
+
+        window.addEventListener('dragleave', (e) => {
+            if (!hasDraggedFiles(e)) return;
+            dragDepth = Math.max(0, dragDepth - 1);
+            if (dragDepth === 0 || (e.clientX === 0 && e.clientY === 0)) {
+                dragDepth = 0;
+                setDropzoneHighlight(false);
+            }
+        }, true);
+
+        window.addEventListener('drop', (e) => {
+            if (!hasDraggedFiles(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            dragDepth = 0;
+            setDropzoneHighlight(false);
+
+            const files = extractFilesFromDropEvent(e);
+            if (files.length > 0) {
+                enqueueFiles(files);
             } else {
-                showToast('Supabase 클라이언트 초기화에 실패했습니다. URL과 Key를 확인해 주세요.', 'error');
+                showToast('드롭된 파일을 읽지 못했습니다. 드롭 영역을 클릭하여 파일을 직접 선택해 주세요.', 'info');
+            }
+        }, true);
+
+        function handleMultiFileSelect(e) {
+            const files = Array.from(e.target.files || []);
+            if (files.length > 0) {
+                enqueueFiles(files);
+                e.target.value = '';
             }
         }
 // ... existing code ... -->
